@@ -7,6 +7,7 @@ const listController = require('./controllers/list.controller');
 router.post('/register', userController.register);
 router.post('/login', userController.login);
 router.post('/token/refresh', userController.refreshToken);
+router.get('/user', userController.authenticate, userController.getUser);
 
 // List routes
 router.post('/list', listController.createList);
