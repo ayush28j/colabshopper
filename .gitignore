@@ -1,0 +1,22 @@
+*/.env
+
+*/node_modules
+*/package-lock.json
+/coshopper-frontend/.pnp.js
+
+# testing
+/coshopper-frontend/coverage
+
+# production
+/coshopper-frontend/build
+
+# misc
+.DS_Store
+/coshopper-frontend/.env.local
+/coshopper-frontend/.env.development.local
+/coshopper-frontend/.env.test.local
+/coshopper-frontend/.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

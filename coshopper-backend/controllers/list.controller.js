@@ -13,7 +13,7 @@ function oid(id) {
 exports.authenticate = async (req, res, next) => {
     try{
         let listId = req.params.listId;
-        let list = await List.findById(oid(listId));
+        let list = await List.findById(oid(listId)).lean();
         if(!list)
             return res.status(404).json({ error: 'List not found' });
         req.list = list;
@@ -173,7 +173,7 @@ exports.addCollaborator = async (req, res) => {
         const user = await User.findById(oid(req.userId));
         if(!user)
             return res.status(400).json({ error: 'User not found' });
-        const collaborator = await User.findOne({ email });
+        let collaborator = await User.findOne({ email });
         if(!collaborator){
             collaborator = await new User({ name: "Collaborator", email: email, country: user.country, hash_password: User.hashPassword("12345678") }).save();
         }
