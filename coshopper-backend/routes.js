@@ -8,8 +8,12 @@ router.post('/register', userController.register);
 router.post('/login', userController.login);
 router.post('/token/refresh', userController.refreshToken);
 router.get('/user', userController.authenticate, userController.getUser);
+router.put('/user/name', userController.authenticate, userController.updateUserName);
+router.put('/user/country', userController.authenticate, userController.updateUserCountry);
 
 // List routes
+router.get('/lists', listController.getUserLists);
+router.get('/collaborating-lists', listController.getCollaboratingLists);
 router.post('/list', listController.createList);
 router.get('/list/:listId', listController.authenticate, listController.getList);
 router.delete('/list/:listId', listController.authenticate, listController.deleteList);

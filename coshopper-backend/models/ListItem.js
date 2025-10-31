@@ -36,7 +36,10 @@ const ListItemSchema = new Schema({
     },
     addedBy: {
         type: Schema.Types.ObjectId
-    }
+    },
+    addedByName: {
+        type: String,
+    },
 }, { strict: false});
 
 mongoose.model("ListItem", ListItemSchema);

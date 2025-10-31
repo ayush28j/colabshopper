@@ -9,7 +9,7 @@ const ListSchema = new Schema({
     },
     description: {
         type: String,
-        required: true,
+        default: ""
     },
     isPublic: {
         type: Boolean,

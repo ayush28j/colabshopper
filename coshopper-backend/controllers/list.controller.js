@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const User = mongoose.model('User');
 const List = mongoose.model('List');
 const ListItem = mongoose.model('ListItem');
+const { broadcastToList } = require('../ws/ws-server.js');
 
 function oid(id) {
     if(typeof id === 'string')
@@ -19,10 +20,10 @@ exports.authenticate = async (req, res, next) => {
         if(list.isPublic)
             return next();
         if(!req.userId)
-            return res.status(401).json({ error: 'Unauthorized' });
-        if(list.ownerId === req.userId || list.collaborators.some(collaborator => collaborator.userId === req.userId))
+            return res.status(401).json({ error: 'Unauthorized 1' });
+        if(list.ownerId.equals(oid(req.userId)) || list.collaborators.some(collaborator => collaborator.userId.equals(oid(req.userId))))
             return next();
-        return res.status(401).json({ error: 'Unauthorized' });
+        return res.status(401).json({ error: 'Unauthorized 2' });
     }
     catch (error) {
         return res.status(500).json({ error: error.message });
@@ -36,8 +37,9 @@ exports.createList = async (req, res) => {
             return res.status(400).json({ error: 'Name is required' });
         let ownerId = null;
         let ownerName = null;
+        let isPublicValue = isPublic;
         if(!isPublic){
-            isPublic = false;
+            isPublicValue = false;
             if(!req.userId)
                 return res.status(400).json({ error: 'Unauthorized' });
             const user = await User.findById(req.userId);
@@ -47,9 +49,34 @@ exports.createList = async (req, res) => {
             ownerName = user.name;
         }
         else
-            isPublic = true;
-        const list = await new List({ name, description, isPublic, ownerId, ownerName }).save();
+            isPublicValue = true;
+        const list = await new List({ name, description, isPublic: isPublicValue, ownerId, ownerName }).save();
         res.status(201).json(list);
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+}
+
+exports.getUserLists = async (req, res) => {
+    try{
+        if(!req.userId)
+            return res.status(401).json({ error: 'Unauthorized' });
+        let lists = await List.find({ownerId: oid(req.userId)});
+        res.status(200).json(lists);
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+}
+
+exports.getCollaboratingLists = async (req, res) => {
+    try{
+        if(!req.userId)
+            return res.status(401).json({ error: 'Unauthorized' });
+        let lists = await List.find({ 'collaborators.userId': oid(req.userId) });
+        res.status(200).json(lists);
     }
     catch (error) {
         res.status(500).json({ error: error.message });
@@ -70,7 +97,7 @@ exports.getList = async (req, res) => {
             });
         }
         list.items = listItems;
-        res.status(200).json(list);
+        res.status(200).json({...list, items: listItems});
     }
     catch (error) {
         res.status(500).json({ error: error.message });
@@ -85,6 +112,12 @@ exports.deleteList = async (req, res) => {
 
         if(list.ownerId !== req.userId)
             return res.status(401).json({ error: 'Unauthorized' });
+        
+        // Broadcast update to WebSocket clients before deletion
+        broadcastToList(list._id.toString(), {
+            action: 'deleteList'
+        });
+        
         await List.findByIdAndDelete(list._id);
         await ListItem.deleteMany({listId: list._id});
         return res.status(200).json({ message: 'List deleted successfully' });
@@ -101,9 +134,16 @@ exports.updateListDescription = async (req, res) => {
         let list = req.list;
         if(list.isPublic)
             return res.status(400).json({ error: 'Cannot update public list' });
-        if(list.ownerId !== req.userId && !list.collaborators.some(collaborator => collaborator.userId === req.userId && collaborator.permissions.includes('editDescription')))
+        if(!list.ownerId.equals(oid(req.userId)) && !list.collaborators.some(collaborator => collaborator.userId.equals(oid(req.userId)) && collaborator.permissions.includes('editDescription')))
             return res.status(401).json({ error: 'Unauthorized' });
         await List.findByIdAndUpdate(list._id, { $set: { description , updatedAt: Date.now() } });
+        
+        // Broadcast update to WebSocket clients
+        broadcastToList(list._id.toString(), {
+            action: 'updateDescription',
+            description: description
+        });
+        
         return res.status(200).json({ message: 'List description updated successfully' });
     }
     catch (error) {
@@ -121,16 +161,16 @@ exports.addCollaborator = async (req, res) => {
         let list = req.list;
         if(list.isPublic)
             return res.status(400).json({ error: 'Cannot update public list' });
-        if(list.ownerId !== req.userId && !list.collaborators.some(collaborator => collaborator.userId === req.userId && collaborator.permissions.includes('addCollaborator')))
+        if(!list.ownerId.equals(oid(req.userId)) && !list.collaborators.some(collaborator => collaborator.userId.equals(oid(req.userId)) && collaborator.permissions.includes('addCollaborator')))
             return res.status(401).json({ error: 'Unauthorized' });
 
-        if (list.ownerId != req.userId){
-            let collaborator = list.collaborators.find(collaborator => collaborator.userId === req.userId);
+        if (!list.ownerId.equals(oid(req.userId))){
+            let collaborator = list.collaborators.find(collaborator => collaborator.userId.equals(oid(req.userId)));
             if(permissions.some(permission => !collaborator.permissions.includes(permission)))
                 return res.status(400).json({ error: 'You have insufficient permissions to add this collaborator with these permissions' });
         }
 
-        const user = await User.findById(req.userId);
+        const user = await User.findById(oid(req.userId));
         if(!user)
             return res.status(400).json({ error: 'User not found' });
         const collaborator = await User.findOne({ email });
@@ -139,6 +179,17 @@ exports.addCollaborator = async (req, res) => {
         }
 
         await List.findByIdAndUpdate(list._id, { $addToSet: { collaborators: { userId: collaborator._id, userName: collaborator.name, permissions: permissions } } });
+        
+        // Broadcast update to WebSocket clients
+        broadcastToList(list._id.toString(), {
+            action: 'addCollaborator',
+            collaborator: {
+                userId: collaborator._id,
+                userName: collaborator.name,
+                permissions: permissions
+            }
+        });
+        
         return res.status(200).json({ message: 'Collaborator added successfully' });
         
 
@@ -157,16 +208,24 @@ exports.updateCollaboratorPermissions = async (req, res) => {
         let list = req.list;
         if(list.isPublic)
             return res.status(400).json({ error: 'Cannot update public list' });
-        if(list.ownerId !== req.userId && !list.collaborators.some(collaborator => collaborator.userId === req.userId && collaborator.permissions.includes('updateCollaboratorPermissions')))
+        if(!list.ownerId.equals(oid(req.userId)) && !list.collaborators.some(collaborator => collaborator.userId.equals(oid(req.userId)) && collaborator.permissions.includes('updateCollaboratorPermissions')))
             return res.status(401).json({ error: 'Unauthorized' });
 
-        if (list.ownerId != req.userId){
-            let collaborator = list.collaborators.find(collaborator => collaborator.userId === req.userId);
+        if (!list.ownerId.equals(oid(req.userId))){
+            let collaborator = list.collaborators.find(collaborator => collaborator.userId.equals(oid(req.userId)));
             if(permissions.some(permission => !collaborator.permissions.includes(permission)))
                 return res.status(400).json({ error: 'You have insufficient permissions to add this collaborator with these permissions' });
         }
 
         await List.findOneAndUpdate({ _id: list._id, "collaborators.userId": collaboratorUserId }, { $set: { "collaborators.$.permissions": permissions } });
+        
+        // Broadcast update to WebSocket clients
+        broadcastToList(list._id.toString(), {
+            action: 'updateCollaboratorPermissions',
+            collaboratorUserId: collaboratorUserId.toString(),
+            permissions: permissions
+        });
+        
         return res.status(200).json({ message: 'Collaborator permissions updated successfully' });
         
     }catch (error) {
@@ -182,10 +241,17 @@ exports.removeCollaborator = async (req, res) => {
         let list = req.list;
         if(list.isPublic)
             return res.status(400).json({ error: 'Cannot update public list' });
-        if(list.ownerId !== req.userId && !list.collaborators.some(collaborator => collaborator.userId === req.userId && collaborator.permissions.includes('removeCollaborator')))
+        if(!list.ownerId.equals(oid(req.userId)) && !list.collaborators.some(collaborator => collaborator.userId.equals(oid(req.userId)) && collaborator.permissions.includes('removeCollaborator')))
             return res.status(401).json({ error: 'Unauthorized' });
 
         await List.findOneAndUpdate({ _id: list._id, "collaborators.userId": collaboratorUserId }, { $pull: { collaborators: { userId: collaboratorUserId } } });
+        
+        // Broadcast update to WebSocket clients
+        broadcastToList(list._id.toString(), {
+            action: 'removeCollaborator',
+            collaboratorUserId: collaboratorUserId.toString()
+        });
+        
         return res.status(200).json({ message: 'Collaborator removed successfully' });
     }
     catch (error) {
@@ -204,13 +270,20 @@ exports.addAdditionalColumn = async (req, res) => {
         let list = req.list;
         if(list.isPublic)
             return res.status(400).json({ error: 'Cannot update public list' });
-        if(list.ownerId !== req.userId && !list.collaborators.some(collaborator => collaborator.userId === req.userId && collaborator.permissions.includes('addAdditionalColumn')))
+        if(!list.ownerId.equals(oid(req.userId)) && !list.collaborators.some(collaborator => collaborator.userId.equals(oid(req.userId)) && collaborator.permissions.includes('addAdditionalColumn')))
             return res.status(401).json({ error: 'Unauthorized' });
 
         if (list.additionalColumns.some(column => column.name === name))
             return res.status(400).json({ error: 'Column with this name already exists' });
 
         await List.findOneAndUpdate({ _id: list._id }, { $addToSet: { additionalColumns: { name, type } } });
+        
+        // Broadcast update to WebSocket clients
+        broadcastToList(list._id.toString(), {
+            action: 'addAdditionalColumn',
+            column: { name, type }
+        });
+        
         return res.status(200).json({ message: 'Additional column added successfully' });
     }
     catch (error) {
@@ -224,7 +297,7 @@ exports.removeAdditionalColumn = async (req, res) => {
         let list = req.list;
         if(list.isPublic)
             return res.status(400).json({ error: 'Cannot update public list' });
-        if(list.ownerId !== req.userId && !list.collaborators.some(collaborator => collaborator.userId === req.userId && collaborator.permissions.includes('removeAdditionalColumn')))
+        if(!list.ownerId.equals(oid(req.userId)) && !list.collaborators.some(collaborator => collaborator.userId.equals(oid(req.userId)) && collaborator.permissions.includes('removeAdditionalColumn')))
             return res.status(401).json({ error: 'Unauthorized' });
 
         if (!list.additionalColumns.some(column => column.name === name))
@@ -232,6 +305,13 @@ exports.removeAdditionalColumn = async (req, res) => {
 
         await List.findOneAndUpdate({ _id: list._id }, { $pull: { additionalColumns: { name } } });
         await ListItem.updateMany({ listId: list._id }, { $unset: { [name]: 1 } });
+        
+        // Broadcast update to WebSocket clients
+        broadcastToList(list._id.toString(), {
+            action: 'removeAdditionalColumn',
+            columnName: name
+        });
+        
         return res.status(200).json({ message: 'Additional column removed successfully' });
     }
     catch (error) {
@@ -256,10 +336,17 @@ exports.addListItem = async (req, res) => {
             if(whoBrings.some(who => !who.userName || !who.qty))
                 return res.status(400).json({ error: 'Who brings must have user name and quantity' });
     
-            await new ListItem({ name, qty, unit, whoBrings: whoBrings.map(who => ({ userName: who.userName, qty: who.qty })), listId: list._id }).save();
+            const newItem = await new ListItem({ name, qty, unit, whoBrings: whoBrings.map(who => ({ userName: who.userName, qty: who.qty })), listId: list._id }).save();
+            
+            // Broadcast update to WebSocket clients
+            broadcastToList(list._id.toString(), {
+                action: 'addListItem',
+                item: newItem
+            });
+            
             return res.status(200).json({ message: 'Item added successfully' });
         }
-        if(list.ownerId !== req.userId && !list.collaborators.some(collaborator => collaborator.userId === req.userId && collaborator.permissions.includes('addListItem')))
+        if(!list.ownerId.equals(oid(req.userId)) && !list.collaborators.some(collaborator => collaborator.userId.equals(oid(req.userId)) && collaborator.permissions.includes('addListItem')))
             return res.status(401).json({ error: 'Unauthorized' });
 
 
@@ -271,11 +358,18 @@ exports.addListItem = async (req, res) => {
         let additionalColumns = list.additionalColumns;
         let otherKeys = Object.keys(req.body).filter(key => !['name', 'qty', 'unit', 'whoBrings'].includes(key))
         let additionalColumnKeys = otherKeys.filter(key => additionalColumns.some(column => column.name === key));
-        let listItem = {name, qty, unit, whoBrings};
+        let listItem = {name, qty, unit, whoBrings, listId: list._id};
         additionalColumnKeys.forEach(key => {
             listItem[key] = req.body[key];
         });
-        await new ListItem(listItem).save();
+        const newItem = await new ListItem(listItem).save();
+        
+        // Broadcast update to WebSocket clients
+        broadcastToList(list._id.toString(), {
+            action: 'addListItem',
+            item: newItem
+        });
+        
         return res.status(200).json({ message: 'Item added successfully' });
     }
     catch (error) {
@@ -331,16 +425,38 @@ exports.updateListItem = async (req, res) => {
             }
 
             await ListItem.findByIdAndUpdate(listItemId, { $set: { [updateKey]: value } });
+            
+            // Broadcast update to WebSocket clients
+            broadcastToList(list._id.toString(), {
+                action: 'updateListItem',
+                itemId: listItemId.toString(),
+                updateKey: updateKey,
+                value: value
+            });
+            
             return res.status(200).json({ message: 'Item updated successfully' });
         }
-        if(list.ownerId !== req.userId && !list.collaborators.some(collaborator => collaborator.userId === req.userId && collaborator.permissions.includes('updateListItem')))
+        if(!list.ownerId.equals(oid(req.userId)) && !list.collaborators.some(collaborator => collaborator.userId.equals(oid(req.userId)) && collaborator.permissions.includes('updateListItem')))
             return res.status(401).json({ error: 'Unauthorized' });
 
-        if(!list.additionalColumns.some(column => column.name === updateKey)){
+        if(!['name', 'qty', 'unit', 'whoBrings'].includes(updateKey) && !list.additionalColumns.some(column => column.name === updateKey)){
             return res.status(400).json({ error: 'Invalid update key' });
         }
 
+        if(updateKey === 'whoBrings'){
+            value = value.map(who => ({ userName: who.userName, qty: who.qty, userId: who.userId }));
+        }
+
         await ListItem.findByIdAndUpdate(listItemId, { $set: { [updateKey]: value } });
+        
+        // Broadcast update to WebSocket clients
+        broadcastToList(list._id.toString(), {
+            action: 'updateListItem',
+            itemId: listItemId.toString(),
+            updateKey: updateKey,
+            value: value
+        });
+        
         return res.status(200).json({ message: 'Item updated successfully' });
        
     }
@@ -357,11 +473,25 @@ exports.deleteListItem = async (req, res) => {
         let list = req.list;
         if(list.isPublic){
             await ListItem.findByIdAndDelete(listItemId);
+            
+            // Broadcast update to WebSocket clients
+            broadcastToList(list._id.toString(), {
+                action: 'deleteListItem',
+                itemId: listItemId.toString()
+            });
+            
             return res.status(200).json({ message: 'Item deleted successfully' });
         }
-        if(list.ownerId !== req.userId && !list.collaborators.some(collaborator => collaborator.userId === req.userId && collaborator.permissions.includes('deleteListItem')))
+        if(!list.ownerId.equals(oid(req.userId)) && !list.collaborators.some(collaborator => collaborator.userId.equals(oid(req.userId)) && collaborator.permissions.includes('deleteListItem')))
             return res.status(401).json({ error: 'Unauthorized' });
         await ListItem.findByIdAndDelete(listItemId);
+        
+        // Broadcast update to WebSocket clients
+        broadcastToList(list._id.toString(), {
+            action: 'deleteListItem',
+            itemId: listItemId.toString()
+        });
+        
         return res.status(200).json({ message: 'Item deleted successfully' });
     }
     catch (error) {

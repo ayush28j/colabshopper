@@ -1,0 +1,10 @@
+node_modules
+npm-debug.log
+.dockerignore
+Dockerfile
+.env
+coverage
+*.local
+**/*.md
+ws/test-client.html
+

@@ -1,6 +1,14 @@
 const mongoose = require('mongoose');
 const User = mongoose.model('User');
+const List = mongoose.model('List');
+const ListItem = mongoose.model('ListItem');
 const jwt = require('jsonwebtoken');
+
+function oid(id) {
+    if(typeof id === 'string')
+        return new mongoose.Types.ObjectId(id);
+    else return id;
+}
 
 /**
  * @typedef {import('express').Request} Request
@@ -41,7 +49,7 @@ exports.register = async (req, res) => {
             return res.status(400).json({ error: 'Country is required' });
         if(await User.findOne({ email }))
             return res.status(400).json({ error: 'An account with this email already exists' });
-        const user = await new User({ name, email, password, country }).save();
+        const user = await new User({ name, email, hash_password: User.hashPassword(password), country }).save();
         const access = jwt.sign({ id: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: '1d' });
         const refresh = jwt.sign({ id: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: '30d' });
         res.status(201).json({ access, refresh });
@@ -106,6 +114,39 @@ exports.getUser = async (req, res) => {
     try{
         const user = await User.findById(req.userId);
         res.status(200).json(user);
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+}
+
+exports.updateUserName = async (req, res) => {
+    try{
+        const { name } = req.body;
+        if(!name)
+            return res.status(400).json({ error: 'Name is required' });
+        if(name.length < 3 || name.length > 50)
+            return res.status(400).json({ error: 'Name must be between 3 and 50 characters' });
+
+        await User.findByIdAndUpdate(oid(req.userId), { name });
+        await List.updateMany({ ownerId: oid(req.userId) }, { $set: { ownerName: name } });
+        await List.updateMany({ 'collaborators.userId': oid(req.userId) }, { $set: { 'collaborators.$.userName': name } });
+        await ListItem.updateMany({ addedBy: oid(req.userId) }, { $set: { addedByName: name } });
+        await ListItem.updateMany({ 'whoBrings.userId': oid(req.userId) }, { $set: { 'whoBrings.$.userName': name } });
+        res.status(200).json({ message: 'Name updated successfully' });
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+}
+
+exports.updateUserCountry = async (req, res) => {
+    try{
+        const { country } = req.body;
+        if(!country)
+            return res.status(400).json({ error: 'Country is required' });
+        await User.findByIdAndUpdate(oid(req.userId), { country });
+        res.status(200).json({ message: 'Country updated successfully' });
     }
     catch (error) {
         res.status(500).json({ error: error.message });

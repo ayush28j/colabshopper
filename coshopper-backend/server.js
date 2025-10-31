@@ -26,6 +26,7 @@ dotenv.config();
 const models = requireDir("./models/");
 const routes = require('./routes.js');
 const auth = require('./auth.js');
+const { initializeWebSocketServer } = require('./ws/ws-server.js');
 
 
 // Initialize env variables
@@ -64,12 +65,15 @@ app.get('/', (req, res) => {
 app.use('/api/v1', routes);
 
 // Start the server
-app.listen(port, (err) => {
+const server = app.listen(port, (err) => {
     if (err) {
         console.log(err);
     }
     else
         console.log(`Server listening at http://localhost:${port}`);
 });
+
+// Initialize WebSocket server
+initializeWebSocketServer(server);
 
 module.exports = app;

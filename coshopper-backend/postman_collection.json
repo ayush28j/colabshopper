@@ -1,0 +1,739 @@
+{
+  "info": {
+    "name": "CoShopper API",
+    "description": "Complete API collection for CoShopper backend - A collaborative shopping list application",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "list_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "item_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', jsonData.access);",
+                  "    pm.collectionVariables.set('refresh_token', jsonData.refresh);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"securepassword123\",\n  \"country\": \"USA\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/register",
+              "host": ["{{base_url}}"],
+              "path": ["register"]
+            },
+            "description": "Register a new user account. Returns access and refresh JWT tokens."
+          },
+          "response": []
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', jsonData.access);",
+                  "    pm.collectionVariables.set('refresh_token', jsonData.refresh);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"securepassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/login",
+              "host": ["{{base_url}}"],
+              "path": ["login"]
+            },
+            "description": "Authenticate user and receive access tokens."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', jsonData.access);",
+                  "    pm.collectionVariables.set('refresh_token', jsonData.refresh);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/token/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["token", "refresh"]
+            },
+            "description": "Get a new access token using refresh token."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/user",
+              "host": ["{{base_url}}"],
+              "path": ["user"]
+            },
+            "description": "Get information about the currently authenticated user."
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Name",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Smith\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/user/name",
+              "host": ["{{base_url}}"],
+              "path": ["user", "name"]
+            },
+            "description": "Update the authenticated user's name. Also updates name across all lists, collaborations, and items."
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Country",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"country\": \"Canada\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/user/country",
+              "host": ["{{base_url}}"],
+              "path": ["user", "country"]
+            },
+            "description": "Update the authenticated user's country."
+          },
+          "response": []
+        }
+      ],
+      "description": "User authentication and management endpoints"
+    },
+    {
+      "name": "List",
+      "item": [
+        {
+          "name": "Get User's Lists",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/lists",
+              "host": ["{{base_url}}"],
+              "path": ["lists"]
+            },
+            "description": "Get all lists owned by the authenticated user."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Collaborating Lists",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/collaborating-lists",
+              "host": ["{{base_url}}"],
+              "path": ["collaborating-lists"]
+            },
+            "description": "Get all lists where the authenticated user is a collaborator."
+          },
+          "response": []
+        },
+        {
+          "name": "Create List",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('list_id', jsonData._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "disabled": true
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Weekend BBQ Shopping\",\n  \"description\": \"Items needed for weekend barbecue party\",\n  \"isPublic\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/list",
+              "host": ["{{base_url}}"],
+              "path": ["list"]
+            },
+            "description": "Create a new shopping list. Set isPublic to false for private lists (requires authentication)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get List",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/list/{{list_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["list", "{{list_id}}"]
+            },
+            "description": "Get list details with all items. Authentication required for private lists."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete List",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/list/{{list_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["list", "{{list_id}}"]
+            },
+            "description": "Delete a list and all its items. Only list owner can delete. Cannot delete public lists."
+          },
+          "response": []
+        },
+        {
+          "name": "Update List Description",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated description for the shopping list\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/list/{{list_id}}/description",
+              "host": ["{{base_url}}"],
+              "path": ["list", "{{list_id}}", "description"]
+            },
+            "description": "Update the description of a list. Requires editDescription permission."
+          },
+          "response": []
+        }
+      ],
+      "description": "List management endpoints"
+    },
+    {
+      "name": "Collaborators",
+      "item": [
+        {
+          "name": "Add Collaborator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"jane.smith@example.com\",\n  \"permissions\": [\"addItem\", \"editItem\", \"deleteItem\", \"editDescription\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/list/{{list_id}}/collaborators",
+              "host": ["{{base_url}}"],
+              "path": ["list", "{{list_id}}", "collaborators"]
+            },
+            "description": "Add a collaborator to a list with specified permissions."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Collaborator Permissions",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissions\": [\"addItem\", \"editItem\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/list/{{list_id}}/collaborators/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["list", "{{list_id}}", "collaborators", "{{user_id}}"]
+            },
+            "description": "Update permissions for an existing collaborator."
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Collaborator",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/list/{{list_id}}/collaborators/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["list", "{{list_id}}", "collaborators", "{{user_id}}"]
+            },
+            "description": "Remove a collaborator from a list."
+          },
+          "response": []
+        }
+      ],
+      "description": "Collaborator management endpoints"
+    },
+    {
+      "name": "Custom Columns",
+      "item": [
+        {
+          "name": "Add Additional Column",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Store\",\n  \"type\": \"text\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/list/{{list_id}}/additional-columns",
+              "host": ["{{base_url}}"],
+              "path": ["list", "{{list_id}}", "additional-columns"]
+            },
+            "description": "Add a custom column to a list for storing additional data."
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Additional Column",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/list/{{list_id}}/additional-columns/Store",
+              "host": ["{{base_url}}"],
+              "path": ["list", "{{list_id}}", "additional-columns", "Store"]
+            },
+            "description": "Remove a custom column from a list. Also removes that data from all items."
+          },
+          "response": []
+        }
+      ],
+      "description": "Custom column management endpoints"
+    },
+    {
+      "name": "List Items",
+      "item": [
+        {
+          "name": "Add List Item (Public List)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Note: Item ID is not returned in response, need to fetch list to get it"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Hamburger Buns\",\n  \"qty\": 20,\n  \"unit\": \"pcs\",\n  \"whoBrings\": [\n    {\n      \"userName\": \"John Doe\",\n      \"qty\": \"10\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/list/{{list_id}}/item",
+              "host": ["{{base_url}}"],
+              "path": ["list", "{{list_id}}", "item"]
+            },
+            "description": "Add an item to a public list. No authentication required."
+          },
+          "response": []
+        },
+        {
+          "name": "Add List Item (Private List)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Hamburger Buns\",\n  \"qty\": 20,\n  \"unit\": \"pcs\",\n  \"whoBrings\": [\n    {\n      \"userId\": \"{{user_id}}\",\n      \"userName\": \"John Doe\",\n      \"qty\": \"10\"\n    }\n  ],\n  \"Store\": \"Walmart\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/list/{{list_id}}/item",
+              "host": ["{{base_url}}"],
+              "path": ["list", "{{list_id}}", "item"]
+            },
+            "description": "Add an item to a private list. Can include custom column data."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Item - Name",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"Premium Hamburger Buns\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/list/{{list_id}}/item/{{item_id}}/name",
+              "host": ["{{base_url}}"],
+              "path": ["list", "{{list_id}}", "item", "{{item_id}}", "name"]
+            },
+            "description": "Update the name of a list item."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Item - Quantity",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 25\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/list/{{list_id}}/item/{{item_id}}/qty",
+              "host": ["{{base_url}}"],
+              "path": ["list", "{{list_id}}", "item", "{{item_id}}", "qty"]
+            },
+            "description": "Update the quantity of a list item."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Item - Unit",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"dozen\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/list/{{list_id}}/item/{{item_id}}/unit",
+              "host": ["{{base_url}}"],
+              "path": ["list", "{{list_id}}", "item", "{{item_id}}", "unit"]
+            },
+            "description": "Update the unit of measurement for a list item."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Item - Who Brings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": [\n    {\n      \"userId\": \"{{user_id}}\",\n      \"userName\": \"John Doe\",\n      \"qty\": \"15\"\n    },\n    {\n      \"userId\": \"507f1f77bcf86cd799439013\",\n      \"userName\": \"Jane Smith\",\n      \"qty\": \"10\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/list/{{list_id}}/item/{{item_id}}/whoBrings",
+              "host": ["{{base_url}}"],
+              "path": ["list", "{{list_id}}", "item", "{{item_id}}", "whoBrings"]
+            },
+            "description": "Update who is bringing the item and in what quantities."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Item - Custom Column",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"Target\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/list/{{list_id}}/item/{{item_id}}/Store",
+              "host": ["{{base_url}}"],
+              "path": ["list", "{{list_id}}", "item", "{{item_id}}", "Store"]
+            },
+            "description": "Update a custom column value for a list item."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete List Item",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/list/{{list_id}}/item/{{item_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["list", "{{list_id}}", "item", "{{item_id}}"]
+            },
+            "description": "Delete an item from a list."
+          },
+          "response": []
+        }
+      ],
+      "description": "List item management endpoints"
+    }
+  ]
+}
+
