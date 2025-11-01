@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import './list.css';
 import {
   getList,
@@ -25,6 +25,7 @@ const ListPage: React.FC = () => {
   const [list, setList] = useState<ListDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<'not-found' | 'access-denied' | 'other' | null>(null);
 
   const [descriptionDraft, setDescriptionDraft] = useState('');
   const [editingDescription, setEditingDescription] = useState(false);
@@ -184,7 +185,17 @@ const ListPage: React.FC = () => {
           savedName ? setPublicUserName(savedName) : setShowUsernameModal(true);
         }
       } catch (e: any) {
-        setError(e?.message || 'Failed to load list');
+        const errorMsg = e?.message || 'Failed to load list';
+        const status = e?.status || 0;
+        setError(errorMsg);
+        // Determine error type based on status code or message
+        if (status === 404 || errorMsg.toLowerCase().includes('not found')) {
+          setErrorType('not-found');
+        } else if (status === 401 || status === 403 || errorMsg.toLowerCase().includes('unauthorized') || errorMsg.toLowerCase().includes('access denied') || errorMsg.toLowerCase().includes('permission')) {
+          setErrorType('access-denied');
+        } else {
+          setErrorType('other');
+        }
       } finally {
         setLoading(false);
       }
@@ -232,7 +243,11 @@ const ListPage: React.FC = () => {
 
       setList(prev => {
         if (!prev) return prev;
-        if (msg.action === 'deleteList') return null;
+        if (msg.action === 'deleteList') {
+          setError('This list has been deleted');
+          setErrorType('not-found');
+          return null;
+        }
         return actions[msg.action]?.(prev) || prev;
       });
     };
@@ -627,9 +642,64 @@ const ListPage: React.FC = () => {
     setWhoBringers([]);
   };
 
-  if (loading) return <div className="list-page">Loading…</div>;
-  if (error) return <div className="list-page">{error}</div>;
-  if (!list) return <div className="list-page">List not found</div>;
+  if (loading) {
+    return (
+      <div className="list-page">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Loading list...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (error || !list) {
+    return (
+      <div className="list-page">
+        <div className="error-container">
+          <div className="error-icon">
+            {errorType === 'not-found' ? (
+              <svg width="120" height="120" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            ) : errorType === 'access-denied' ? (
+              <svg width="120" height="120" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 15V17M6 21H18C19.1046 21 20 20.1046 20 19V10C20 8.89543 19.1046 8 18 8H17M6 21C4.89543 21 4 20.1046 4 19V10C4 8.89543 4.89543 8 6 8H7M6 21H4M17 8V5C17 3.89543 16.1046 3 15 3H9C7.89543 3 7 3.89543 7 5V8M17 8H7M9 12H9.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            ) : (
+              <svg width="120" height="120" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+          </div>
+          <h1 className="error-title">
+            {errorType === 'not-found' 
+              ? "List Not Found" 
+              : errorType === 'access-denied'
+              ? "Access Denied"
+              : "Error Loading List"}
+          </h1>
+          <p className="error-message">
+            {errorType === 'not-found'
+              ? "The list you're looking for doesn't exist or may have been deleted."
+              : errorType === 'access-denied'
+              ? "You don't have permission to access this list. Please make sure you're logged in with the correct account or request access from the list owner."
+              : error || "An unexpected error occurred while loading the list."}
+          </p>
+          <div className="error-actions">
+            <Link to="/" className="error-button primary">
+              Go to Home
+            </Link>
+            {isLoggedIn() && (
+              <Link to="/my-lists" className="error-button secondary">
+                My Lists
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const isPrivate = !list.isPublic;
   const userLoggedIn = isLoggedIn();

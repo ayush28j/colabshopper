@@ -28,6 +28,15 @@ export function clearTokens() {
   localStorage.removeItem('colabshopper_public_user_name');
 }
 
+class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+    this.name = 'ApiError';
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -53,7 +62,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       const retryRes = await fetch(`${BASE_URL}${path}`, { ...options, headers: retryHeaders });
       if (!retryRes.ok) {
         const err = await safeJson(retryRes);
-        throw new Error(err?.error || retryRes.statusText);
+        throw new ApiError(err?.error || retryRes.statusText, retryRes.status);
       }
       return (await retryRes.json()) as T;
     }
@@ -61,7 +70,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const err = await safeJson(res);
-    throw new Error(err?.error || res.statusText);
+    throw new ApiError(err?.error || res.statusText, res.status);
   }
   return (await res.json()) as T;
 }
