@@ -201,10 +201,27 @@ export async function updateListDescription(listId: string, description: string)
   });
 }
 
-export async function addCollaborator(listId: string, email: string, permissions: string[]): Promise<{ message: string }> {
+// Find collaborator by email
+export async function findCollaboratorByEmail(email: string): Promise<{ collaboratorName: string | null }> {
+  return await request<{ collaboratorName: string | null }>('/find-collaborator-by-email', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function addCollaborator(
+  listId: string, 
+  email: string, 
+  permissions: string[], 
+  collaboratorName?: string
+): Promise<{ message: string }> {
+  const body: any = { email, permissions };
+  if (collaboratorName) {
+    body.collaboratorName = collaboratorName;
+  }
   return await request<{ message: string }>(`/list/${listId}/collaborators`, {
     method: 'POST',
-    body: JSON.stringify({ email, permissions }),
+    body: JSON.stringify(body),
   });
 }
 

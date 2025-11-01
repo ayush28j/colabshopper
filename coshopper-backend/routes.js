@@ -14,6 +14,7 @@ router.put('/user/country', userController.authenticate, userController.updateUs
 // List routes
 router.get('/lists', listController.getUserLists);
 router.get('/collaborating-lists', listController.getCollaboratingLists);
+router.post('/find-collaborator-by-email', listController.findCollaboratorByEmail);
 router.post('/list', listController.createList);
 router.get('/list/:listId', listController.authenticate, listController.getList);
 router.delete('/list/:listId', listController.authenticate, listController.deleteList);

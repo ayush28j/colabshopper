@@ -73,7 +73,7 @@ exports.login = async (req, res) => {
         const user = await User.findOne({ email });
         if(!user)
             return res.status(400).json({ error: 'User not found' });
-        if(user.validatePassword(password))
+        if(!user.isCorrectPassword(password))
             return res.status(400).json({ error: 'Invalid password' });
         const access = jwt.sign({ id: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: '1d' });
         const refresh = jwt.sign({ id: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: '30d' });

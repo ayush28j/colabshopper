@@ -1,6 +1,6 @@
 # CoShopper API Documentation
 
-Complete API reference for the CoShopper backend service with 20 endpoints.
+Complete API reference for the CoShopper backend service with 21 endpoints.
 
 ## Base URL
 
@@ -301,7 +301,54 @@ Retrieve all lists where the authenticated user is a collaborator.
 
 ---
 
-### 9. Create List
+### 9. Find Collaborator by Email
+
+Find a user by their email address to get their name. Useful for looking up collaborators before adding them to a list.
+
+**Endpoint:** `POST /find-collaborator-by-email`
+
+**Authentication:** Not required
+
+**Request Body:**
+```json
+{
+  "email": "jane.smith@example.com"
+}
+```
+
+**Request Fields:**
+- `email` (string, required): Email address to search for
+
+**Success Response (200 OK):**
+```json
+{
+  "collaboratorName": "Jane Smith"
+}
+```
+
+**If user not found:**
+```json
+{
+  "collaboratorName": null
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Missing email
+```json
+{
+  "error": "Email is required"
+}
+```
+
+**Notes:**
+- Returns `null` for `collaboratorName` if no user exists with that email
+- Does not require authentication - public endpoint
+- Useful for checking if a user exists before attempting to add as collaborator
+
+---
+
+### 10. Create List
 
 Create a new shopping list.
 
@@ -345,7 +392,7 @@ Create a new shopping list.
 
 ---
 
-### 10. Get List
+### 11. Get List
 
 Retrieve list details with all items.
 
@@ -408,7 +455,7 @@ Retrieve list details with all items.
 
 ---
 
-### 11. Delete List
+### 12. Delete List
 
 Delete a list and all its items (owner only, private lists only).
 
@@ -433,7 +480,7 @@ Delete a list and all its items (owner only, private lists only).
 
 ---
 
-### 12. Update List Description
+### 13. Update List Description
 
 Update the description of a list.
 
@@ -477,7 +524,7 @@ Update the description of a list.
 
 ## Collaborator Endpoints
 
-### 13. Add Collaborator
+### 14. Add Collaborator
 
 Add a user as a collaborator to a list.
 
@@ -488,7 +535,7 @@ Add a user as a collaborator to a list.
 **URL Parameters:**
 - `listId` (string): MongoDB ObjectId of the list
 
-**Request Body:**
+**Request Body (User exists):**
 ```json
 {
   "email": "jane.smith@example.com",
@@ -496,9 +543,19 @@ Add a user as a collaborator to a list.
 }
 ```
 
+**Request Body (User doesn't exist):**
+```json
+{
+  "email": "newuser@example.com",
+  "collaboratorName": "New User",
+  "permissions": ["addItem", "editItem", "deleteItem"]
+}
+```
+
 **Request Fields:**
 - `email` (string, required): Email of the collaborator
 - `permissions` (array, required): Array of permission strings
+- `collaboratorName` (string, optional): Required only if the user doesn't exist in the system
 
 **Available Permissions:**
 - `addItem`
@@ -520,15 +577,22 @@ Add a user as a collaborator to a list.
 
 **Error Responses:**
 - `400 Bad Request`: Invalid email or permissions
+```json
+{
+  "error": "Collaborator name is required as this user is not registered"
+}
+```
 - `401 Unauthorized`: Insufficient permissions
 - `404 Not Found`: List not found
 
 **Notes:**
-- If the email doesn't exist in the system, a new user account is created with a default password
+- If the email doesn't exist in the system, `collaboratorName` must be provided
+- A new user account will be created with the provided name and a default password
+- Use the `/find-collaborator-by-email` endpoint first to check if a user exists
 
 ---
 
-### 14. Update Collaborator Permissions
+### 15. Update Collaborator Permissions
 
 Update the permissions of an existing collaborator.
 
@@ -559,7 +623,7 @@ Update the permissions of an existing collaborator.
 
 ---
 
-### 15. Remove Collaborator
+### 16. Remove Collaborator
 
 Remove a collaborator from a list.
 
@@ -585,7 +649,7 @@ Remove a collaborator from a list.
 
 ## Custom Column Endpoints
 
-### 16. Add Additional Column
+### 17. Add Additional Column
 
 Add a custom column to a list for storing additional data.
 
@@ -621,7 +685,7 @@ Add a custom column to a list for storing additional data.
 
 ---
 
-### 17. Remove Additional Column
+### 18. Remove Additional Column
 
 Remove a custom column from a list.
 
@@ -651,7 +715,7 @@ Remove a custom column from a list.
 
 ## List Item Endpoints
 
-### 18. Add List Item
+### 19. Add List Item
 
 Add a new item to a shopping list.
 
@@ -714,7 +778,7 @@ Add a new item to a shopping list.
 
 ---
 
-### 19. Update List Item
+### 20. Update List Item
 
 Update a specific property of a list item.
 
@@ -784,7 +848,7 @@ PUT /list/507f1f77bcf86cd799439011/item/507f1f77bcf86cd799439014/whoBrings
 
 ---
 
-### 20. Delete List Item
+### 21. Delete List Item
 
 Remove an item from a list.
 

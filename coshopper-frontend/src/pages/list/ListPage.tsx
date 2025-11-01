@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import './list.css';
 import {
@@ -8,8 +8,10 @@ import {
   addAdditionalColumnApi,
   removeAdditionalColumnApi,
   updateListDescription,
+  findCollaboratorByEmail,
   addCollaborator,
   removeCollaborator,
+  updateCollaboratorPermissions,
   addListItemApi,
   updateListItemApi,
   deleteListItemApi,
@@ -29,17 +31,37 @@ const ListPage: React.FC = () => {
   const [addColType, setAddColType] = useState('text');
   const [collabEmail, setCollabEmail] = useState('');
   const [collabPerms, setCollabPerms] = useState<string[]>(['addItem', 'editItem', 'deleteItem']);
+  const [collabName, setCollabName] = useState<string>('');
   const [publicUserName, setPublicUserName] = useState('');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
-  const [showPermsDropdown, setShowPermsDropdown] = useState(false);
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [showPermsModal, setShowPermsModal] = useState(false);
+  const [editingCollabId, setEditingCollabId] = useState<string | null>(null);
+  const [collabListExpanded, setCollabListExpanded] = useState(true);
   const [newItem, setNewItem] = useState<{ [k: string]: any }>({ name: '', qty: '', unit: 'pcs' });
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  // WhoBrings editor state
+  const [showWhoBringsModal, setShowWhoBringsModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<ListItem | null>(null);
+  const [whoBringers, setWhoBringers] = useState<Array<{ name: string; qty: string; userId?: string }>>([]);
+  
+  // Delete column confirmation
+  const [showDeleteColumnModal, setShowDeleteColumnModal] = useState(false);
+  const [columnToDelete, setColumnToDelete] = useState<string | null>(null);
 
   const baseColumns = useMemo(() => ['name', 'qty', 'unit', 'whoBrings'], []);
   const dynamicColumns = useMemo(() => list?.additionalColumns?.map(c => c.name) || [], [list]);
   const allColumns = useMemo(() => [...baseColumns, ...dynamicColumns], [baseColumns, dynamicColumns]);
+  
+  const getColumnType = (colName: string): string => {
+    if (colName === 'qty') return 'number';
+    if (colName === 'whoBrings') return 'whoBrings';
+    const col = list?.additionalColumns?.find(c => c.name === colName);
+    return col?.type || 'text';
+  };
   
   const whoBringsOptions = useMemo(() => {
     if (!list) return [];
@@ -111,16 +133,6 @@ const ListPage: React.FC = () => {
     loadList();
   }, [listId]);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowPermsDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   useEffect(() => {
     if (!listId) return;
@@ -238,25 +250,97 @@ const ListPage: React.FC = () => {
     }
   };
 
-  const onRemoveColumn = async (name: string) => {
-    if (!listId) return;
+  const onRemoveColumnClick = (name: string) => {
+    setColumnToDelete(name);
+    setShowDeleteColumnModal(true);
+  };
+
+  const onConfirmDeleteColumn = async () => {
+    if (!listId || !columnToDelete) return;
     try {
-      await removeAdditionalColumnApi(listId, name);
+      await removeAdditionalColumnApi(listId, columnToDelete);
+      setShowDeleteColumnModal(false);
+      setColumnToDelete(null);
       await refresh();
     } catch (e: any) {
       handleError(e, 'Failed to remove column');
     }
   };
 
+  const onCancelDeleteColumn = () => {
+    setShowDeleteColumnModal(false);
+    setColumnToDelete(null);
+  };
+
+  const onAddCollaboratorClick = async () => {
+    if (!collabEmail.trim()) {
+      alert('Please enter an email address');
+      return;
+    }
+    
+    try {
+      // Fetch collaborator name from backend
+      const result = await findCollaboratorByEmail(collabEmail.trim());
+      
+      if (result.collaboratorName) {
+        // User exists - proceed to permissions modal
+        setCollabName(result.collaboratorName);
+        setEditingCollabId(null);
+        setShowPermsModal(true);
+      } else {
+        // User doesn't exist - ask for name first
+        setNameInput('');
+        setShowNameModal(true);
+      }
+    } catch (e: any) {
+      handleError(e, 'Failed to lookup collaborator');
+    }
+  };
+
+  const onNameModalSubmit = () => {
+    if (!nameInput.trim()) {
+      alert('Please enter a name');
+      return;
+    }
+    setCollabName(nameInput.trim());
+    setShowNameModal(false);
+    setEditingCollabId(null);
+    setShowPermsModal(true);
+  };
+
   const onAddCollaborator = async () => {
     if (!listId || !collabEmail.trim() || collabPerms.length === 0) return;
     try {
-      await addCollaborator(listId, collabEmail.trim(), collabPerms);
+      // Pass collaboratorName only if it was manually entered (user doesn't exist)
+      const nameToSend = collabName && !editingCollabId ? collabName : undefined;
+      await addCollaborator(listId, collabEmail.trim(), collabPerms, nameToSend);
       setCollabEmail('');
+      setCollabName('');
       setCollabPerms(['addItem', 'editItem', 'deleteItem']);
+      setShowPermsModal(false);
       await refresh();
     } catch (e: any) {
       handleError(e, 'Failed to add collaborator');
+    }
+  };
+
+  const onEditPermissionsClick = (userId: string, currentPerms: string[], userName: string) => {
+    setEditingCollabId(userId);
+    setCollabName(userName);
+    setCollabPerms([...currentPerms]);
+    setShowPermsModal(true);
+  };
+
+  const onUpdatePermissions = async () => {
+    if (!listId || !editingCollabId || collabPerms.length === 0) return;
+    try {
+      await updateCollaboratorPermissions(listId, editingCollabId, collabPerms);
+      setShowPermsModal(false);
+      setEditingCollabId(null);
+      setCollabPerms(['addItem', 'editItem', 'deleteItem']);
+      await refresh();
+    } catch (e: any) {
+      handleError(e, 'Failed to update permissions');
     }
   };
 
@@ -266,6 +350,20 @@ const ListPage: React.FC = () => {
         ? prev.filter(p => p !== permission)
         : [...prev, permission]
     );
+  };
+
+  const closePermsModal = () => {
+    setShowPermsModal(false);
+    setEditingCollabId(null);
+    setCollabName('');
+    if (!editingCollabId) {
+      setCollabPerms(['addItem', 'editItem', 'deleteItem']);
+    }
+  };
+
+  const closeNameModal = () => {
+    setShowNameModal(false);
+    setNameInput('');
   };
 
   const onRemoveCollaborator = async (userId: string) => {
@@ -345,6 +443,92 @@ const ListPage: React.FC = () => {
     localStorage.setItem('coshopper_public_username', name);
     setShowUsernameModal(false);
     setUsernameInput('');
+  };
+
+  const onEditWhoBrings = (item: ListItem) => {
+    setEditingItem(item);
+    
+    // Initialize whoBringers from existing data or with default
+    if (item.whoBrings && item.whoBrings.length > 0) {
+      setWhoBringers(item.whoBrings.map(w => ({
+        name: w.userName,
+        qty: String(w.qty),
+        userId: w.userId
+      })));
+    } else {
+      // Default: current user with full quantity
+      const defaultName = list?.isPublic ? publicUserName : (list?.ownerName || '');
+      const defaultUserId = list?.isPublic ? undefined : currentUserId || undefined;
+      setWhoBringers([{ name: defaultName, qty: String(item.qty), userId: defaultUserId }]);
+    }
+    
+    setShowWhoBringsModal(true);
+  };
+
+  const onAddWhoBringer = () => {
+    const defaultName = list?.isPublic ? publicUserName : (list?.ownerName || '');
+    const defaultUserId = list?.isPublic ? undefined : currentUserId || undefined;
+    const remainingQty = calculateRemainingQty();
+    setWhoBringers([...whoBringers, { name: defaultName, qty: String(remainingQty), userId: defaultUserId }]);
+  };
+
+  const onRemoveWhoBringer = (index: number) => {
+    setWhoBringers(whoBringers.filter((_, i) => i !== index));
+  };
+
+  const updateWhoBringer = (index: number, field: 'name' | 'qty', value: string) => {
+    const updated = [...whoBringers];
+    updated[index][field] = value;
+    
+    // If name changed and it's a private list, find the userId
+    if (field === 'name' && !list?.isPublic) {
+      const collab = list?.collaborators?.find(c => c.userName === value);
+      if (collab) {
+        updated[index].userId = collab.userId;
+      } else if (list?.ownerName === value && list?.ownerId) {
+        updated[index].userId = list.ownerId;
+      }
+    }
+    
+    setWhoBringers(updated);
+  };
+
+  const calculateRemainingQty = () => {
+    if (!editingItem) return 0;
+    const totalQty = editingItem.qty;
+    const assignedQty = whoBringers.reduce((sum, w) => sum + (Number(w.qty) || 0), 0);
+    return Math.max(0, totalQty - assignedQty);
+  };
+
+  const onSaveWhoBrings = async () => {
+    if (!listId || !editingItem) return;
+    
+    try {
+      // Format whoBrings data for API
+      const formattedWhoBrings = whoBringers
+        .filter(w => w.name.trim() && Number(w.qty) > 0)
+        .map(w => {
+          if (list?.isPublic) {
+            return { userName: w.name, qty: w.qty };
+          } else {
+            return { userId: w.userId, userName: w.name, qty: w.qty };
+          }
+        });
+
+      await updateListItemApi(listId, editingItem._id, 'whoBrings', formattedWhoBrings);
+      setShowWhoBringsModal(false);
+      setEditingItem(null);
+      setWhoBringers([]);
+      await refresh();
+    } catch (e: any) {
+      handleError(e, 'Failed to update who brings');
+    }
+  };
+
+  const closeWhoBringsModal = () => {
+    setShowWhoBringsModal(false);
+    setEditingItem(null);
+    setWhoBringers([]);
   };
 
   if (loading) return <div className="list-page">Loading…</div>;
@@ -439,59 +623,58 @@ const ListPage: React.FC = () => {
                 value={collabEmail}
                 onChange={(e) => setCollabEmail(e.target.value)}
                 placeholder="Collaborator email address"
-                style={{ width: '100%', marginBottom: '0.75rem' }}
+                style={{ width: '100%' }}
               />
-              <div className="row">
-                <div className="custom-dropdown-wrapper" ref={dropdownRef}>
-                  <button
-                    type="button"
-                    className="dropdown-trigger"
-                    onClick={() => setShowPermsDropdown(!showPermsDropdown)}
-                  >
-                    {`Permissions (${collabPerms.length})`}
-                    <span className="dropdown-arrow">▼</span>
-                  </button>
-                  {showPermsDropdown && (
-                    <div className="dropdown-menu">
-                      {permissionOptions.map(perm => (
-                        <label key={perm.value} className="dropdown-option">
-                          <input
-                            type="checkbox"
-                            className="dropdown-checkbox"
-                            checked={collabPerms.includes(perm.value)}
-                            onChange={() => togglePermission(perm.value)}
-                          />
-                          <span>{perm.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <button 
-                  onClick={onAddCollaborator}
-                  disabled={!collabEmail.trim() || collabPerms.length === 0}
-                >
-                  Add Collaborator
-                </button>
-              </div>
+              <button 
+                onClick={onAddCollaboratorClick}
+                style={{ width: '100%', marginTop: '0.75rem' }}
+              >
+                Add Collaborator
+              </button>
               
               {list.collaborators && list.collaborators.length > 0 && (
-                <ul className="collab-list">
-                  {list.collaborators.map(c => (
-                    <li key={c.userId}>
-                      <div>
-                        <span className="collab-name">{c.userName}</span>
-                        <div className="collab-perms">
-                          {c.permissions.map(p => {
-                            const perm = permissionOptions.find(po => po.value === p);
-                            return perm ? perm.label : p;
-                          }).join(', ')}
-                        </div>
-                      </div>
-                      <button onClick={() => onRemoveCollaborator(c.userId)}>Remove</button>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  <div 
+                    className="collab-list-header"
+                    onClick={() => setCollabListExpanded(!collabListExpanded)}
+                  >
+                    <span>Current Collaborators ({list.collaborators.length})</span>
+                    <span className={`expand-arrow ${collabListExpanded ? 'expanded' : ''}`}>▼</span>
+                  </div>
+                  {collabListExpanded && (
+                    <ul className="collab-list">
+                      {list.collaborators.map(c => (
+                        <li key={c.userId}>
+                          <div className="collab-info">
+                            <span className="collab-name">{c.userName}</span>
+                            <div className="collab-perms">
+                              {c.permissions.map(p => {
+                                const perm = permissionOptions.find(po => po.value === p);
+                                return perm ? perm.label : p;
+                              }).join(', ')}
+                            </div>
+                          </div>
+                          <div className="collab-actions-vertical">
+                            <button 
+                              onClick={() => onEditPermissionsClick(c.userId, c.permissions, c.userName)}
+                              className="edit-btn-small"
+                              title="Edit Permissions"
+                            >
+                              ✎
+                            </button>
+                            <button 
+                              onClick={() => onRemoveCollaborator(c.userId)}
+                              className="remove-btn-small"
+                              title="Remove Collaborator"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -513,6 +696,7 @@ const ListPage: React.FC = () => {
                 >
                   <option value="text">Text</option>
                   <option value="number">Number</option>
+                  <option value="person">Person</option>
                 </select>
               </div>
               <button onClick={onAddColumn} style={{ width: '100%' }}>Add Column</button>
@@ -520,7 +704,7 @@ const ListPage: React.FC = () => {
                 {dynamicColumns.map(col => (
                   <span key={col} className="chip">
                     {col}
-                    <button onClick={() => onRemoveColumn(col)} title="Remove">×</button>
+                    <button onClick={() => onRemoveColumnClick(col)} title="Remove">×</button>
                   </span>
                 ))}
               </div>
@@ -541,29 +725,32 @@ const ListPage: React.FC = () => {
               </thead>
               <tbody>
                 <tr className="new-row">
-                  {allColumns.map(col => (
-                    <td key={col}>
-                      {col === 'whoBrings' ? (
-                        <select
-                          value={newItem.whoBrings ?? ''}
-                          onChange={(e) => setNewItem(prev => ({ ...prev, whoBrings: e.target.value }))}
-                          className="table-select"
-                        >
-                          <option value="">-- Select (optional) --</option>
-                          {whoBringsOptions.map(name => (
-                            <option key={name} value={name}>{name}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          type={col === 'qty' ? 'number' : 'text'}
-                          value={newItem[col] ?? ''}
-                          onChange={(e) => setNewItem(prev => ({ ...prev, [col]: e.target.value }))}
-                          placeholder={col}
-                        />
-                      )}
-                    </td>
-                  ))}
+                  {allColumns.map(col => {
+                    const colType = getColumnType(col);
+                    return (
+                      <td key={col}>
+                        {colType === 'whoBrings' || colType === 'person' ? (
+                          <select
+                            value={newItem[col] ?? ''}
+                            onChange={(e) => setNewItem(prev => ({ ...prev, [col]: e.target.value }))}
+                            className="table-select"
+                          >
+                            <option value="">-- Select (optional) --</option>
+                            {whoBringsOptions.map(name => (
+                              <option key={name} value={name}>{name}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type={colType === 'number' ? 'number' : 'text'}
+                            value={newItem[col] ?? ''}
+                            onChange={(e) => setNewItem(prev => ({ ...prev, [col]: e.target.value }))}
+                            placeholder={col}
+                          />
+                        )}
+                      </td>
+                    );
+                  })}
                   <td>
                     <button onClick={onAddItem} title="Add">＋</button>
                   </td>
@@ -571,22 +758,41 @@ const ListPage: React.FC = () => {
 
                 {list.items?.map(item => (
                   <tr key={item._id}>
-                    {allColumns.map(col => (
-                      <td key={col}>
-                        {col === 'whoBrings' ? (
-                          <span className="muted">
-                            {Array.isArray(item.whoBrings) && item.whoBrings.length
-                              ? item.whoBrings.map(w => `${w.userName} (${w.qty})`).join(', ')
-                              : '-'}
-                          </span>
-                        ) : (
-                          <InlineEditable
-                            value={String((item as any)[col] ?? '')}
-                            onSave={(val) => onUpdateCell(item, col, col === 'qty' ? Number(val) : val)}
-                          />
-                        )}
-                      </td>
-                    ))}
+                    {allColumns.map(col => {
+                      const colType = getColumnType(col);
+                      return (
+                        <td key={col}>
+                          {colType === 'whoBrings' ? (
+                            <div className="who-brings-cell">
+                              <span className="muted">
+                                {Array.isArray(item.whoBrings) && item.whoBrings.length
+                                  ? item.whoBrings.map(w => `${w.userName} (${w.qty})`).join(', ')
+                                  : '-'}
+                              </span>
+                              <button 
+                                onClick={() => onEditWhoBrings(item)} 
+                                className="edit-who-brings-btn"
+                                title="Edit Who Brings"
+                              >
+                                ✎
+                              </button>
+                            </div>
+                          ) : colType === 'person' ? (
+                            <PersonEditable
+                              value={String((item as any)[col] ?? '')}
+                              options={whoBringsOptions}
+                              onSave={(val) => onUpdateCell(item, col, val)}
+                            />
+                          ) : (
+                            <InlineEditable
+                              value={String((item as any)[col] ?? '')}
+                              inputType={colType === 'number' ? 'number' : 'text'}
+                              onSave={(val) => onUpdateCell(item, col, colType === 'number' ? Number(val) : val)}
+                            />
+                          )}
+                        </td>
+                      );
+                    })}
                     <td>
                       <button onClick={() => onDeleteItem(item._id)} title="Delete">🗑️</button>
                     </td>
@@ -597,11 +803,227 @@ const ListPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* WhoBrings Editor Modal */}
+      {showWhoBringsModal && editingItem && (
+        <div className="perms-modal-overlay" onClick={closeWhoBringsModal}>
+          <div className="perms-modal who-brings-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Edit Who Brings</h2>
+            <p className="modal-subtitle">
+              Item: {editingItem.name} (Total: {editingItem.qty} {editingItem.unit})
+            </p>
+
+            <div className="who-brings-list">
+              {whoBringers.map((bringer, index) => (
+                <div key={index} className="who-bringer-row">
+                  <div className="bringer-fields">
+                    {list.isPublic ? (
+                      <div className="public-name-field">
+                        <label>Name:</label>
+                        <select
+                          value={bringer.name}
+                          onChange={(e) => {
+                            if (e.target.value === '__custom__') {
+                              // User wants to enter custom name
+                              updateWhoBringer(index, 'name', '');
+                            } else {
+                              updateWhoBringer(index, 'name', e.target.value);
+                            }
+                          }}
+                          className="bringer-name-select"
+                        >
+                          {whoBringsOptions.map(name => (
+                            <option key={name} value={name}>{name}</option>
+                          ))}
+                          <option value="__custom__">-- Enter new name --</option>
+                        </select>
+                        {(!whoBringsOptions.includes(bringer.name) || bringer.name === '') && (
+                          <input
+                            type="text"
+                            value={bringer.name}
+                            onChange={(e) => updateWhoBringer(index, 'name', e.target.value)}
+                            placeholder="Enter name"
+                            className="bringer-name-input"
+                            autoFocus
+                          />
+                        )}
+                      </div>
+                    ) : (
+                      <div className="private-name-field">
+                        <label>Collaborator:</label>
+                        <select
+                          value={bringer.name}
+                          onChange={(e) => updateWhoBringer(index, 'name', e.target.value)}
+                          className="bringer-name-select"
+                        >
+                          {list.ownerName && <option value={list.ownerName}>{list.ownerName}</option>}
+                          {list.collaborators?.map(c => (
+                            <option key={c.userId} value={c.userName}>{c.userName}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    
+                    <div className="qty-field">
+                      <label>Quantity:</label>
+                      <input
+                        type="number"
+                        value={bringer.qty}
+                        onChange={(e) => updateWhoBringer(index, 'qty', e.target.value)}
+                        placeholder="Quantity"
+                        className="bringer-qty-input"
+                        min="0"
+                      />
+                    </div>
+                  </div>
+                  
+                  {whoBringers.length > 1 && (
+                    <button
+                      onClick={() => onRemoveWhoBringer(index)}
+                      className="remove-bringer-btn"
+                      title="Remove"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {calculateRemainingQty() > 0 && (
+              <div className="remaining-qty-info">
+                Remaining quantity: {calculateRemainingQty()} {editingItem.unit}
+              </div>
+            )}
+
+            {calculateRemainingQty() > 0 && (
+              <button onClick={onAddWhoBringer} className="add-bringer-btn">
+                + Add Another Person
+              </button>
+            )}
+
+            <div className="modal-actions">
+              <button 
+                onClick={onSaveWhoBrings}
+                className="primary-btn"
+              >
+                Save
+              </button>
+              <button onClick={closeWhoBringsModal} className="secondary-btn">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Name Input Modal */}
+      {showNameModal && (
+        <div className="perms-modal-overlay" onClick={closeNameModal}>
+          <div className="perms-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Collaborator Name</h2>
+            <p className="modal-subtitle">
+              This email is not registered. Please enter the collaborator's name:
+            </p>
+            <input
+              type="text"
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              placeholder="Enter full name"
+              className="name-input"
+              autoFocus
+              onKeyPress={(e) => e.key === 'Enter' && onNameModalSubmit()}
+            />
+            <div className="modal-actions">
+              <button 
+                onClick={onNameModalSubmit}
+                disabled={!nameInput.trim()}
+                className="primary-btn"
+              >
+                Continue
+              </button>
+              <button onClick={closeNameModal} className="secondary-btn">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Permissions Modal */}
+      {showPermsModal && (
+        <div className="perms-modal-overlay" onClick={closePermsModal}>
+          <div className="perms-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>{editingCollabId ? 'Edit Permissions' : 'Select Permissions'}</h2>
+            <p className="modal-subtitle">
+              {editingCollabId 
+                ? `Update permissions for: ${collabName}` 
+                : `Setting permissions for: ${collabName}`
+              }
+            </p>
+            <div className="perms-grid">
+              {permissionOptions.map(perm => (
+                <label key={perm.value} className="perm-option">
+                  <input
+                    type="checkbox"
+                    checked={collabPerms.includes(perm.value)}
+                    onChange={() => togglePermission(perm.value)}
+                  />
+                  <span>{perm.label}</span>
+                </label>
+              ))}
+            </div>
+            <div className="modal-actions">
+              <button 
+                onClick={editingCollabId ? onUpdatePermissions : onAddCollaborator}
+                disabled={collabPerms.length === 0}
+                className="primary-btn"
+              >
+                {editingCollabId ? 'Update' : 'Add Collaborator'}
+              </button>
+              <button onClick={closePermsModal} className="secondary-btn">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Column Confirmation Modal */}
+      {showDeleteColumnModal && (
+        <div className="perms-modal-overlay" onClick={onCancelDeleteColumn}>
+          <div className="perms-modal delete-column-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>⚠️ Delete Column</h2>
+            <p className="modal-subtitle">
+              Are you sure you want to delete the column <strong>"{columnToDelete}"</strong>?
+            </p>
+            <p className="warning-text">
+              Once the column is removed, all values in this column will be permanently deleted. 
+              This action is irreversible.
+            </p>
+            <div className="modal-actions">
+              <button 
+                onClick={onConfirmDeleteColumn}
+                className="danger-btn"
+              >
+                Yes, Delete
+              </button>
+              <button onClick={onCancelDeleteColumn} className="secondary-btn">
+                No, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-const InlineEditable: React.FC<{ value: string; onSave: (v: string) => void }> = ({ value, onSave }) => {
+const InlineEditable: React.FC<{ 
+  value: string; 
+  inputType?: string;
+  onSave: (v: string) => void;
+}> = ({ value, inputType = 'text', onSave }) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
 
@@ -609,7 +1031,43 @@ const InlineEditable: React.FC<{ value: string; onSave: (v: string) => void }> =
 
   return editing ? (
     <span className="inline-edit">
-      <input value={draft} onChange={(e) => setDraft(e.target.value)} />
+      <input 
+        type={inputType} 
+        value={draft} 
+        onChange={(e) => setDraft(e.target.value)} 
+      />
+      <button onClick={() => { onSave(draft); setEditing(false); }} title="Save">✓</button>
+      <button onClick={() => { setDraft(value); setEditing(false); }} title="Cancel">×</button>
+    </span>
+  ) : (
+    <span className="inline-view" onDoubleClick={() => setEditing(true)}>
+      {value || '-'} <button onClick={() => setEditing(true)} title="Edit">✎</button>
+    </span>
+  );
+};
+
+const PersonEditable: React.FC<{ 
+  value: string; 
+  options: string[];
+  onSave: (v: string) => void;
+}> = ({ value, options, onSave }) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => setDraft(value), [value]);
+
+  return editing ? (
+    <span className="inline-edit">
+      <select 
+        value={draft} 
+        onChange={(e) => setDraft(e.target.value)}
+        className="table-select"
+      >
+        <option value="">-- Select --</option>
+        {options.map(name => (
+          <option key={name} value={name}>{name}</option>
+        ))}
+      </select>
       <button onClick={() => { onSave(draft); setEditing(false); }} title="Save">✓</button>
       <button onClick={() => { setDraft(value); setEditing(false); }} title="Cancel">×</button>
     </span>

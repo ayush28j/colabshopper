@@ -107,6 +107,7 @@ Authorization: Bearer <your-jwt-token>
 - **List Management**
   - `GET /lists` - Get user's owned lists
   - `GET /collaborating-lists` - Get lists where user is a collaborator
+  - `POST /find-collaborator-by-email` - Find collaborator name by email
   - `POST /list` - Create a new list
   - `GET /list/:listId` - Get list details and items
   - `DELETE /list/:listId` - Delete a list

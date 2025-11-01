@@ -87,15 +87,15 @@ exports.getList = async (req, res) => {
     try{
         let list = req.list;
         let listItems = await ListItem.find({listId: list._id});
-        if(!list.isPublic){
-            let userIds = listItems.map(item => item.whoBrings.map(who => who.userId)).flat();
-            let users = await User.find({_id: {$in: userIds}});
-            let userMap = new Map(users.map(user => [user._id, user]));
-            listItems = listItems.map(item => {
-                item.whoBrings = item.whoBrings.map(who => ({...who, userName: userMap.get(who.userId).name}));
-                return item;
-            });
-        }
+        // if(!list.isPublic){
+        //     let userIds = listItems.map(item => item.whoBrings.map(who => who.userId)).flat();
+        //     let users = await User.find({_id: {$in: userIds}});
+        //     let userMap = new Map(users.map(user => [user._id, user]));
+        //     listItems = listItems.map(item => {
+        //         item.whoBrings = item.whoBrings.map(who => ({...who, userName: userMap.get(who.userId).name}));
+        //         return item;
+        //     });
+        // }
         list.items = listItems;
         res.status(200).json({...list, items: listItems});
     }
@@ -151,9 +151,22 @@ exports.updateListDescription = async (req, res) => {
     }
 }
 
+exports.findCollaboratorByEmail = async (req, res) => {
+    try{
+        let { email } = req.body;
+        if(!email)
+            return res.status(400).json({ error: 'Email is required' });
+        let collaborator = await User.findOne({ email });
+        return res.status(200).json({collaboratorName: collaborator?.name});
+    }
+    catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.addCollaborator = async (req, res) => {
     try{
-        let { email, permissions } = req.body;
+        let { email, permissions, collaboratorName } = req.body;
         if(!email || !Array.isArray(permissions))
             return res.status(400).json({ error: 'Email and permissions are required' });
         if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
@@ -175,7 +188,9 @@ exports.addCollaborator = async (req, res) => {
             return res.status(400).json({ error: 'User not found' });
         let collaborator = await User.findOne({ email });
         if(!collaborator){
-            collaborator = await new User({ name: "Collaborator", email: email, country: user.country, hash_password: User.hashPassword("12345678") }).save();
+            if(!collaboratorName)
+                return res.status(400).json({ error: 'Collaborator name is required as this user is not registered' });
+            collaborator = await new User({ name: collaboratorName, email: email, country: user.country, hash_password: User.hashPassword("12345678") }).save();
         }
 
         await List.findByIdAndUpdate(list._id, { $addToSet: { collaborators: { userId: collaborator._id, userName: collaborator.name, permissions: permissions } } });
@@ -395,6 +410,7 @@ exports.updateListItem = async (req, res) => {
                 return res.status(400).json({ error: 'Who brings must be an array' });
             if(value.some(who => !who.userName || !who.qty))
                 return res.status(400).json({ error: 'Who brings must have user name and quantity' });
+            value = value.map(who => ({...who, qty: Number(who.qty)}));
             if(value.reduce((acc, who) => acc + who.qty, 0) > listItem.qty)
                 return res.status(400).json({ error: 'Total quantity of who brings must be less than or equal to the total quantity' });
         }
