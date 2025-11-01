@@ -15,6 +15,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background: #ffffff;
   color: #2d3748;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 code {
@@ -267,6 +270,48 @@ code {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
+}
+
+/* Mobile-specific improvements */
+@media (max-width: 768px) {
+  body {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  input,
+  textarea,
+  select {
+    font-size: 16px; /* Prevents zoom on iOS when focusing inputs */
+  }
+  
+  .container {
+    padding: 0 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0 0.75rem;
+  }
+}
+
+/* Touch-friendly buttons */
+button,
+a,
+[role="button"] {
+  min-height: 44px; /* iOS recommended touch target size */
+  min-width: 44px;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Better focus styles for accessibility */
+*:focus-visible {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
 }
 
 /* Print styles */

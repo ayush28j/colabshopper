@@ -51,6 +51,10 @@ const ListPage: React.FC = () => {
   // Delete column confirmation
   const [showDeleteColumnModal, setShowDeleteColumnModal] = useState(false);
   const [columnToDelete, setColumnToDelete] = useState<string | null>(null);
+  
+  // Column filters
+  const [columnFilters, setColumnFilters] = useState<{ [key: string]: string }>({});
+  const [showFilterDropdown, setShowFilterDropdown] = useState<string | null>(null);
 
   const baseColumns = useMemo(() => ['name', 'qty', 'unit', 'whoBrings'], []);
   const dynamicColumns = useMemo(() => list?.additionalColumns?.map(c => c.name) || [], [list]);
@@ -80,6 +84,52 @@ const ListPage: React.FC = () => {
       return options;
     }
   }, [list]);
+  
+  // Get unique values for a filterable column
+  const getColumnFilterOptions = (colName: string): string[] => {
+    if (!list?.items) return [];
+    const values = new Set<string>();
+    
+    if (colName === 'whoBrings') {
+      list.items.forEach(item => {
+        item.whoBrings?.forEach(w => w.userName && values.add(w.userName));
+      });
+    } else {
+      list.items.forEach(item => {
+        const value = (item as any)[colName];
+        if (value !== undefined && value !== null && value !== '') {
+          values.add(String(value));
+        }
+      });
+    }
+    
+    return Array.from(values).sort();
+  };
+  
+  // Check if a column is filterable
+  const isFilterableColumn = (colName: string): boolean => {
+    return !['name', 'qty', 'unit'].includes(colName);
+  };
+  
+  // Filter items based on active filters
+  const filteredItems = useMemo(() => {
+    if (!list?.items) return [];
+    
+    // If no filters are active, return all items
+    const activeFilters = Object.entries(columnFilters).filter(([_, value]) => value);
+    if (activeFilters.length === 0) return list.items;
+    
+    return list.items.filter(item => {
+      return activeFilters.every(([col, filterValue]) => {
+        if (col === 'whoBrings') {
+          return item.whoBrings?.some(w => w.userName === filterValue);
+        } else {
+          const itemValue = (item as any)[col];
+          return String(itemValue) === filterValue;
+        }
+      });
+    });
+  }, [list?.items, columnFilters]);
 
   // Check if current user can add collaborators
   const canAddCollaborator = useMemo(() => {
@@ -271,6 +321,43 @@ const ListPage: React.FC = () => {
     setShowDeleteColumnModal(false);
     setColumnToDelete(null);
   };
+  
+  const toggleFilterDropdown = (colName: string) => {
+    setShowFilterDropdown(showFilterDropdown === colName ? null : colName);
+  };
+  
+  const applyFilter = (colName: string, value: string) => {
+    setColumnFilters(prev => ({ ...prev, [colName]: value }));
+    setShowFilterDropdown(null);
+  };
+  
+  const clearFilter = (colName: string) => {
+    setColumnFilters(prev => {
+      const newFilters = { ...prev };
+      delete newFilters[colName];
+      return newFilters;
+    });
+    setShowFilterDropdown(null);
+  };
+  
+  const clearAllFilters = () => {
+    setColumnFilters({});
+  };
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.filter-container')) {
+        setShowFilterDropdown(null);
+      }
+    };
+    
+    if (showFilterDropdown) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showFilterDropdown]);
 
   const onAddCollaboratorClick = async () => {
     if (!collabEmail.trim()) {
@@ -713,12 +800,67 @@ const ListPage: React.FC = () => {
         </div>
 
         <div className="table-pane">
+          {Object.keys(columnFilters).length > 0 && (
+            <div className="active-filters-bar">
+              <span className="filter-count">
+                {Object.keys(columnFilters).length} filter{Object.keys(columnFilters).length > 1 ? 's' : ''} active
+              </span>
+              <button className="clear-all-filters-btn" onClick={clearAllFilters}>
+                Clear All Filters
+              </button>
+            </div>
+          )}
           <div className="table-wrapper">
             <table className="list-table">
               <thead>
                 <tr>
                   {allColumns.map(col => (
-                    <th key={col}>{col}</th>
+                    <th key={col}>
+                      <div className="th-content">
+                        <span>{col}</span>
+                        {isFilterableColumn(col) && (
+                          <div className="filter-container">
+                            <button 
+                              className={`filter-btn ${columnFilters[col] ? 'active' : ''}`}
+                              onClick={() => toggleFilterDropdown(col)}
+                              title="Filter"
+                            >
+                              🔍
+                            </button>
+                            {showFilterDropdown === col && (
+                              <div className="filter-dropdown">
+                                <div className="filter-header">
+                                  Filter by {col}
+                                  {columnFilters[col] && (
+                                    <button 
+                                      className="clear-filter-btn"
+                                      onClick={() => clearFilter(col)}
+                                      title="Clear filter"
+                                    >
+                                      ✕
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="filter-options">
+                                  {getColumnFilterOptions(col).map(value => (
+                                    <button
+                                      key={value}
+                                      className={`filter-option ${columnFilters[col] === value ? 'selected' : ''}`}
+                                      onClick={() => applyFilter(col, value)}
+                                    >
+                                      {value}
+                                    </button>
+                                  ))}
+                                  {getColumnFilterOptions(col).length === 0 && (
+                                    <div className="no-options">No values to filter</div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </th>
                   ))}
                   <th>actions</th>
                 </tr>
@@ -756,7 +898,7 @@ const ListPage: React.FC = () => {
                   </td>
                 </tr>
 
-                {list.items?.map(item => (
+                {filteredItems.map(item => (
                   <tr key={item._id}>
                     {allColumns.map(col => {
                       const colType = getColumnType(col);
