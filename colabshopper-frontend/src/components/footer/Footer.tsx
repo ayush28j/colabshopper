@@ -21,7 +21,7 @@ const Footer: React.FC = () => {
                   </linearGradient>
                 </defs>
               </svg>
-              <span className="footer-brand">CoShopper</span>
+              <span className="footer-brand">ColabShopper</span>
             </div>
             <p className="footer-description">
               Making collaborative shopping lists simple and fun. 
@@ -63,7 +63,7 @@ const Footer: React.FC = () => {
         </div>
 
         <div className="footer-bottom">
-          <p>&copy; {currentYear} CoShopper. All rights reserved.</p>
+          <p>&copy; {currentYear} ColabShopper. All rights reserved.</p>
           <p className="footer-tagline">Built with ❤️ for collaborative shopping</p>
         </div>
       </div>

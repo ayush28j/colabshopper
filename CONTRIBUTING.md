@@ -1,6 +1,6 @@
-# Contributing to CoShopper
+# Contributing to ColabShopper
 
-Thank you for your interest in contributing to CoShopper! This document provides guidelines and instructions for contributing to the project.
+Thank you for your interest in contributing to ColabShopper! This document provides guidelines and instructions for contributing to the project.
 
 ## 📋 Table of Contents
 
@@ -32,19 +32,19 @@ We are committed to providing a welcoming and inclusive environment for all cont
 1. **Fork the repository**
    ```bash
    # Fork on GitHub, then clone your fork
-   git clone https://github.com/yourusername/coshopper.git
-   cd coshopper
+   git clone https://github.com/yourusername/colabshopper.git
+   cd colabshopper
    ```
 
 2. **Set up the development environment**
    ```bash
    # Backend
-   cd coshopper-backend
+   cd colabshopper-backend
    npm install
    cp .env.example .env  # Create .env file
    
    # Frontend
-   cd ../coshopper-frontend
+   cd ../colabshopper-frontend
    npm install
    ```
 
@@ -60,7 +60,7 @@ We are committed to providing a welcoming and inclusive environment for all cont
 1. Make sure MongoDB is running
 2. Start the development server:
    ```bash
-   cd coshopper-backend
+   cd colabshopper-backend
    npm run dev
    ```
 3. The server will auto-reload on file changes
@@ -69,7 +69,7 @@ We are committed to providing a welcoming and inclusive environment for all cont
 
 1. Start the development server:
    ```bash
-   cd coshopper-frontend
+   cd colabshopper-frontend
    npm start
    ```
 2. The app will open at http://localhost:3000 with hot-reload enabled
@@ -81,10 +81,10 @@ We are committed to providing a welcoming and inclusive environment for all cont
 - **Build**: Ensure both build successfully:
   ```bash
   # Backend
-  cd coshopper-backend && npm start
+  cd colabshopper-backend && npm start
   
   # Frontend
-  cd coshopper-frontend && npm run build
+  cd colabshopper-frontend && npm run build
   ```
 
 ## 🎨 Code Style
@@ -335,7 +335,7 @@ When contributing:
 ### Frontend Testing
 
 ```bash
-cd coshopper-frontend
+cd colabshopper-frontend
 npm test
 ```
 
@@ -388,7 +388,7 @@ If you have questions:
 
 ## 🙏 Thank You!
 
-Thank you for taking the time to contribute to CoShopper! Every contribution, big or small, is valued and appreciated.
+Thank you for taking the time to contribute to ColabShopper! Every contribution, big or small, is valued and appreciated.
 
 ---
 

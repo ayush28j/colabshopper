@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "CoShopper API",
-    "description": "Complete API collection for CoShopper backend - A collaborative shopping list application",
+    "name": "ColabShopper API",
+    "description": "Complete API collection for ColabShopper backend - A collaborative shopping list application",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "version": "1.0.0"
   },

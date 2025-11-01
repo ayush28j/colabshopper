@@ -1,6 +1,6 @@
 # WebSocket Real-Time Updates
 
-This directory contains the WebSocket implementation for real-time list updates in the CoShopper backend.
+This directory contains the WebSocket implementation for real-time list updates in the ColabShopper backend.
 
 ## Overview
 

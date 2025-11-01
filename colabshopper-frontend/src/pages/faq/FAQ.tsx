@@ -11,8 +11,8 @@ const FAQ: React.FC = () => {
 
   const faqData: FAQItem[] = [
     {
-      question: "What is CoShopper?",
-      answer: "CoShopper is a collaborative shopping list application that allows you to create, share, and manage shopping lists with friends and family in real-time. Never forget items or duplicate purchases again!"
+      question: "What is ColabShopper?",
+      answer: "ColabShopper is a collaborative shopping list application that allows you to create, share, and manage shopping lists with friends and family in real-time. Never forget items or duplicate purchases again!"
     },
     {
       question: "How do I create a shopping list?",
@@ -23,16 +23,16 @@ const FAQ: React.FC = () => {
       answer: "Yes! You can invite friends and family to collaborate on your shopping lists. Everyone with access can add, edit, and check off items in real-time."
     },
     {
-      question: "Is CoShopper free to use?",
-      answer: "Yes, CoShopper is completely free to use. Create as many lists as you need and invite as many collaborators as you want."
+      question: "Is ColabShopper free to use?",
+      answer: "Yes, ColabShopper is completely free to use. Create as many lists as you need and invite as many collaborators as you want."
     },
     {
       question: "How do I invite someone to my list?",
       answer: "After creating a list, you'll find a 'Share' button. Click it to generate a unique link or enter email addresses to send invitations directly."
     },
     {
-      question: "Can I use CoShopper offline?",
-      answer: "CoShopper requires an internet connection to sync changes in real-time with your collaborators. However, you can view previously loaded lists offline."
+      question: "Can I use ColabShopper offline?",
+      answer: "ColabShopper requires an internet connection to sync changes in real-time with your collaborators. However, you can view previously loaded lists offline."
     },
     {
       question: "How do I delete a list?",
@@ -53,7 +53,7 @@ const FAQ: React.FC = () => {
       <div className="faq-container">
         <div className="faq-header">
           <h1>Frequently Asked Questions</h1>
-          <p>Find answers to common questions about CoShopper</p>
+          <p>Find answers to common questions about ColabShopper</p>
         </div>
 
         <div className="faq-list">
@@ -92,7 +92,7 @@ const FAQ: React.FC = () => {
 
         <div className="faq-contact">
           <h2>Still have questions?</h2>
-          <p>Feel free to reach out to our support team at support@coshopper.com</p>
+          <p>Feel free to reach out to our support team at support@colabshopper.com</p>
         </div>
       </div>
     </div>

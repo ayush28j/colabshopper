@@ -3,7 +3,7 @@ version: "3.9"
 services:
   mongo:
     image: mongo
-    container_name: coshopper-mongo
+    container_name: colabshopper-mongo
     restart: unless-stopped
     ports:
       - "27017:27017"
@@ -16,8 +16,8 @@ services:
 
   backend:
     build:
-      context: ./coshopper-backend
-    container_name: coshopper-backend
+      context: ./colabshopper-backend
+    container_name: colabshopper-backend
     restart: unless-stopped
     environment:
       - PORT=8080
@@ -30,8 +30,8 @@ services:
 
   frontend:
     build:
-      context: ./coshopper-frontend
-    container_name: coshopper-frontend
+      context: ./colabshopper-frontend
+    container_name: colabshopper-frontend
     restart: unless-stopped
     ports:
       - "3000:3000"

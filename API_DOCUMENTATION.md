@@ -1,6 +1,6 @@
-# CoShopper API Documentation
+# ColabShopper API Documentation
 
-Complete API reference for the CoShopper backend service with 21 endpoints.
+Complete API reference for the ColabShopper backend service with 21 endpoints.
 
 ## Base URL
 

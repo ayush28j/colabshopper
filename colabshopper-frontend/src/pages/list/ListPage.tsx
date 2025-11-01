@@ -17,6 +17,7 @@ import {
   deleteListItemApi,
   isLoggedIn,
   getCurrentUser,
+  getAccessToken,
 } from '../../utils/api';
 
 const ListPage: React.FC = () => {
@@ -235,7 +236,7 @@ const ListPage: React.FC = () => {
       
       socket.onopen = () => {
         attempts = 0;
-        const token = isLoggedIn() ? localStorage.getItem('coshopper_access_token') : undefined;
+        const token = isLoggedIn() ? getAccessToken() : undefined;
         socket?.send(JSON.stringify({ listId, token }));
       };
       

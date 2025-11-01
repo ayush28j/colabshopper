@@ -1,7 +1,7 @@
 /**
  * WebSocket Client Example
  * 
- * This file demonstrates how to connect to the CoShopper WebSocket server
+ * This file demonstrates how to connect to the ColabShopper WebSocket server
  * and receive real-time list updates.
  * 
  * Usage in browser or Node.js:

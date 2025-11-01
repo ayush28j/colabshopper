@@ -14,7 +14,7 @@ const PrivacyPolicy: React.FC = () => {
           <section className="privacy-section">
             <h2>Introduction</h2>
             <p>
-              Welcome to CoShopper. We respect your privacy and are committed to protecting your personal data. 
+              Welcome to ColabShopper. We respect your privacy and are committed to protecting your personal data. 
               This privacy policy will inform you about how we look after your personal data when you visit our 
               application and tell you about your privacy rights and how the law protects you.
             </p>
@@ -33,12 +33,12 @@ const PrivacyPolicy: React.FC = () => {
                 items, and any notes or descriptions you add.
               </li>
               <li>
-                <strong>Usage Data:</strong> We collect information about how you use CoShopper, including 
+                <strong>Usage Data:</strong> We collect information about how you use ColabShopper, including 
                 features you access and actions you take.
               </li>
               <li>
                 <strong>Device Information:</strong> We may collect information about the device you use to 
-                access CoShopper, including device type, operating system, and browser type.
+                access ColabShopper, including device type, operating system, and browser type.
               </li>
             </ul>
           </section>
@@ -112,7 +112,7 @@ const PrivacyPolicy: React.FC = () => {
           <section className="privacy-section">
             <h2>Children's Privacy</h2>
             <p>
-              CoShopper is not intended for children under 13 years of age. We do not knowingly collect 
+              ColabShopper is not intended for children under 13 years of age. We do not knowingly collect 
               personal information from children under 13. If you are a parent or guardian and believe 
               your child has provided us with personal information, please contact us.
             </p>
@@ -133,7 +133,7 @@ const PrivacyPolicy: React.FC = () => {
               If you have any questions about this privacy policy or our data practices, please contact us at:
             </p>
             <div className="contact-info">
-              <p><strong>Email:</strong> privacy@coshopper.com</p>
+              <p><strong>Email:</strong> privacy@colabshopper.com</p>
               <p><strong>Address:</strong> 123 Shopping Lane, Tech City, TC 12345</p>
             </div>
           </section>

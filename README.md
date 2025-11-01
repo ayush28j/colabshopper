@@ -1,4 +1,4 @@
-# 🛒 CoShopper
+# 🛒 ColabShopper
 
 <div align="center">
   <h3>A collaborative shopping list management platform with real-time synchronization</h3>
@@ -61,12 +61,12 @@
 
 ### Option 1: Docker (Recommended)
 
-The easiest way to run CoShopper is using Docker Compose:
+The easiest way to run ColabShopper is using Docker Compose:
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/coshopper.git
-   cd coshopper
+   git clone https://github.com/yourusername/colabshopper.git
+   cd colabshopper
    ```
 
 2. **Create environment file**
@@ -78,7 +78,7 @@ The easiest way to run CoShopper is using Docker Compose:
    ```env
    MONGO_INITDB_ROOT_USERNAME=admin
    MONGO_INITDB_ROOT_PASSWORD=your-secure-password
-   MONGO_INITDB_DATABASE=coshopper
+   MONGO_INITDB_DATABASE=colabshopper
    JWT_SECRET=your-super-secret-jwt-key
    ```
 
@@ -98,7 +98,7 @@ The easiest way to run CoShopper is using Docker Compose:
 
 1. **Navigate to backend directory**
    ```bash
-   cd coshopper-backend
+   cd colabshopper-backend
    ```
 
 2. **Install dependencies**
@@ -109,7 +109,7 @@ The easiest way to run CoShopper is using Docker Compose:
 3. **Create `.env` file**
    ```env
    PORT=8000
-   MONGO_URI=mongodb://localhost:27017/coshopper
+   MONGO_URI=mongodb://localhost:27017/colabshopper
    JWT_SECRET=your-super-secret-jwt-key-change-in-production
    ```
 
@@ -133,7 +133,7 @@ The easiest way to run CoShopper is using Docker Compose:
 
 1. **Navigate to frontend directory**
    ```bash
-   cd coshopper-frontend
+   cd colabshopper-frontend
    ```
 
 2. **Install dependencies**
@@ -160,8 +160,8 @@ The easiest way to run CoShopper is using Docker Compose:
 ## 📁 Project Structure
 
 ```
-coshopper/
-├── coshopper-backend/          # Backend API server
+colabshopper/
+├── colabshopper-backend/          # Backend API server
 │   ├── controllers/            # Business logic
 │   │   ├── list.controller.js
 │   │   └── user.controller.js
@@ -177,7 +177,7 @@ coshopper/
 │   ├── server.js               # Express server setup
 │   └── package.json
 │
-├── coshopper-frontend/         # React frontend
+├── colabshopper-frontend/         # React frontend
 │   ├── public/                 # Static assets
 │   ├── src/
 │   │   ├── components/         # Reusable components
@@ -275,7 +275,7 @@ All endpoints require JWT authentication (except registration and login).
 
 ## 🌐 WebSocket Integration
 
-CoShopper uses WebSocket for real-time updates. Connect to:
+ColabShopper uses WebSocket for real-time updates. Connect to:
 
 ```
 ws://localhost:8000/ws
@@ -295,7 +295,7 @@ The server will send updates for:
 - Column additions/removals
 - Item additions/updates/deletions
 
-See [coshopper-backend/ws/README.md](./coshopper-backend/ws/README.md) for detailed WebSocket documentation.
+See [colabshopper-backend/ws/README.md](./colabshopper-backend/ws/README.md) for detailed WebSocket documentation.
 
 ---
 
@@ -332,7 +332,7 @@ See [coshopper-backend/ws/README.md](./coshopper-backend/ws/README.md) for detai
 
 ## 📱 Mobile Support
 
-CoShopper is fully responsive and optimized for:
+ColabShopper is fully responsive and optimized for:
 - 📱 Mobile phones (320px and above)
 - 📱 Tablets (768px and above)
 - 💻 Desktop (1024px and above)
@@ -354,7 +354,7 @@ Use the provided Postman collection:
 ### Frontend Testing
 
 ```bash
-cd coshopper-frontend
+cd colabshopper-frontend
 npm test
 ```
 
@@ -374,14 +374,14 @@ npm test
 
 1. **Backend**:
    ```bash
-   cd coshopper-backend
+   cd colabshopper-backend
    npm install --production
    npm start
    ```
 
 2. **Frontend**:
    ```bash
-   cd coshopper-frontend
+   cd colabshopper-frontend
    npm install
    npm run build
    # Serve the build folder with nginx or any static server
@@ -437,7 +437,7 @@ This project is licensed under the ISC License.
 
 ## 📞 Support
 
-For issues, questions, or feature requests, please [open an issue](https://github.com/yourusername/coshopper/issues).
+For issues, questions, or feature requests, please [open an issue](https://github.com/yourusername/colabshopper/issues).
 
 ---
 
@@ -454,7 +454,7 @@ For issues, questions, or feature requests, please [open an issue](https://githu
 ---
 
 <div align="center">
-  <p>Made with ❤️ by the CoShopper team</p>
+  <p>Made with ❤️ by the ColabShopper team</p>
   <p>⭐ Star this repo if you find it helpful!</p>
 </div>
 

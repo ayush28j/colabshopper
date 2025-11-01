@@ -33,7 +33,7 @@ A collaborative shopping list application backend that enables users to create, 
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd coshopper-backend
+cd colabshopper-backend
 ```
 
 2. Install dependencies:
@@ -44,7 +44,7 @@ npm install
 3. Create a `.env` file in the root directory:
 ```env
 PORT=8000
-MONGO_URI=mongodb://localhost:27017/coshopper
+MONGO_URI=mongodb://localhost:27017/colabshopper
 JWT_SECRET=your-secret-key-here
 ```
 
