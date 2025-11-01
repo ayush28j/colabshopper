@@ -73,18 +73,26 @@ const ListPage: React.FC = () => {
     if (list.isPublic) {
       // Collect all unique userNames from whoBrings across all items
       const names = new Set<string>();
+      // Add current user's name first (if logged in or has public username)
+      if (publicUserName) {
+        names.add(publicUserName);
+      }
       list.items?.forEach(item => {
         item.whoBrings?.forEach(w => w.userName && names.add(w.userName));
       });
       return Array.from(names);
     } else {
       // List all collaborators + owner
-      const options = [];
-      if (list.ownerName) options.push(list.ownerName);
-      list.collaborators?.forEach(c => options.push(c.userName));
-      return options;
+      const options = new Set<string>();
+      if (list.ownerName) options.add(list.ownerName);
+      list.collaborators?.forEach(c => options.add(c.userName));
+      // Add current user if they're logged in and have a name
+      if (publicUserName && (list.ownerId === currentUserId || list.collaborators?.some(c => c.userId === currentUserId))) {
+        options.add(publicUserName);
+      }
+      return Array.from(options);
     }
-  }, [list]);
+  }, [list, publicUserName, currentUserId]);
   
   // Get unique values for a filterable column
   const getColumnFilterOptions = (colName: string): string[] => {
