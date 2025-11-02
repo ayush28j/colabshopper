@@ -5,7 +5,7 @@ export type AccessTokens = {
   refresh: string;
 };
 
-const BASE_URL = 'http://localhost:8000/api/v1';
+const BASE_URL = 'https://backend.colabshopper.com/api/v1';
 const ACCESS_KEY = 'colabshopper_access_token';
 const REFRESH_KEY = 'colabshopper_refresh_token';
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import './CreateListModal.css';
 import { isLoggedIn as authIsLoggedIn, createList as apiCreateList } from '../../utils/api';
 import { useNavigate } from 'react-router-dom';
+import logo from '../../logo.svg';
 
 interface CreateListModalProps {
   show: boolean;
@@ -88,14 +89,13 @@ const CreateListModal: React.FC<CreateListModalProps> = ({ show, onClose, onLogi
           </svg>
         </button>
 
+        
+
         {currentStep === 'listType' ? (
           <>
             <div className="create-modal-header">
               <div className="create-modal-icon">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-                  <path d="M9 11l3 3L22 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+                <img src={logo} alt="ColabShopper Logo" />
               </div>
               <h2>Choose List Type</h2>
               <p>Select whether you want a private or public list</p>
@@ -137,10 +137,7 @@ const CreateListModal: React.FC<CreateListModalProps> = ({ show, onClose, onLogi
           <>
             <div className="create-modal-header">
               <div className="create-modal-icon">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-                  <path d="M9 11l3 3L22 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+                <img src={logo} alt="ColabShopper Logo" />
               </div>
               <h2>List Details</h2>
               <p>Creating a {listType} shopping list</p>

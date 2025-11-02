@@ -16,6 +16,9 @@ exports.authenticate = async (req, res, next) => {
         let list = await List.findById(oid(listId)).lean();
         if(!list)
             return res.status(404).json({ error: 'List not found' });
+        list.update = async () => {
+            return await List.findByIdAndUpdate(list._id, { $set: { updatedAt: Date.now() } });
+        }
         req.list = list;
         if(list.isPublic)
             return next();
@@ -143,6 +146,7 @@ exports.updateListDescription = async (req, res) => {
             action: 'updateDescription',
             description: description
         });
+        await list.update();
         
         return res.status(200).json({ message: 'List description updated successfully' });
     }
@@ -204,7 +208,7 @@ exports.addCollaborator = async (req, res) => {
                 permissions: permissions
             }
         });
-        
+        await list.update();
         return res.status(200).json({ message: 'Collaborator added successfully' });
         
 
@@ -240,7 +244,7 @@ exports.updateCollaboratorPermissions = async (req, res) => {
             collaboratorUserId: collaboratorUserId.toString(),
             permissions: permissions
         });
-        
+        await list.update();
         return res.status(200).json({ message: 'Collaborator permissions updated successfully' });
         
     }catch (error) {
@@ -266,7 +270,7 @@ exports.removeCollaborator = async (req, res) => {
             action: 'removeCollaborator',
             collaboratorUserId: collaboratorUserId.toString()
         });
-        
+        await list.update();
         return res.status(200).json({ message: 'Collaborator removed successfully' });
     }
     catch (error) {
@@ -298,7 +302,7 @@ exports.addAdditionalColumn = async (req, res) => {
             action: 'addAdditionalColumn',
             column: { name, type }
         });
-        
+        await list.update();
         return res.status(200).json({ message: 'Additional column added successfully' });
     }
     catch (error) {
@@ -326,7 +330,7 @@ exports.removeAdditionalColumn = async (req, res) => {
             action: 'removeAdditionalColumn',
             columnName: name
         });
-        
+        await list.update();
         return res.status(200).json({ message: 'Additional column removed successfully' });
     }
     catch (error) {
@@ -350,15 +354,23 @@ exports.addListItem = async (req, res) => {
         if(list.isPublic){
             if(whoBrings.some(who => !who.userName || !who.qty))
                 return res.status(400).json({ error: 'Who brings must have user name and quantity' });
-    
-            const newItem = await new ListItem({ name, qty, unit, whoBrings: whoBrings.map(who => ({ userName: who.userName, qty: who.qty })), listId: list._id }).save();
+            
+            // For public lists, also allow additional columns
+            let additionalColumns = list.additionalColumns;
+            let otherKeys = Object.keys(req.body).filter(key => !['name', 'qty', 'unit', 'whoBrings'].includes(key));
+            let additionalColumnKeys = otherKeys.filter(key => additionalColumns.some(column => column.name === key));
+            let listItem = { name, qty, unit, whoBrings: whoBrings.map(who => ({ userName: who.userName, qty: who.qty })), listId: list._id };
+            additionalColumnKeys.forEach(key => {
+                listItem[key] = req.body[key];
+            });
+            const newItem = await new ListItem(listItem).save();
             
             // Broadcast update to WebSocket clients
             broadcastToList(list._id.toString(), {
                 action: 'addListItem',
                 item: newItem
             });
-            
+            await list.update();
             return res.status(200).json({ message: 'Item added successfully' });
         }
         if(!list.ownerId.equals(oid(req.userId)) && !list.collaborators.some(collaborator => collaborator.userId.equals(oid(req.userId)) && collaborator.permissions.includes('addListItem')))
@@ -378,7 +390,7 @@ exports.addListItem = async (req, res) => {
             listItem[key] = req.body[key];
         });
         const newItem = await new ListItem(listItem).save();
-        
+        await list.update();
         // Broadcast update to WebSocket clients
         broadcastToList(list._id.toString(), {
             action: 'addListItem',
@@ -430,9 +442,13 @@ exports.updateListItem = async (req, res) => {
             if(typeof value !== 'string')
                 return res.status(400).json({ error: 'Unit must be a string' });
         }
+        if(updateKey === 'completed'){
+            if(typeof value !== 'boolean')
+                return res.status(400).json({ error: 'Completed must be a boolean' });
+        }
 
         if(list.isPublic){
-            if(!['name', 'qty', 'unit', 'whoBrings'].includes(updateKey))
+            if(!['name', 'qty', 'unit', 'whoBrings', 'completed'].includes(updateKey))
                 return res.status(400).json({ error: 'Invalid update key' });
 
 
@@ -449,13 +465,13 @@ exports.updateListItem = async (req, res) => {
                 updateKey: updateKey,
                 value: value
             });
-            
+            await list.update();
             return res.status(200).json({ message: 'Item updated successfully' });
         }
         if(!list.ownerId.equals(oid(req.userId)) && !list.collaborators.some(collaborator => collaborator.userId.equals(oid(req.userId)) && collaborator.permissions.includes('updateListItem')))
             return res.status(401).json({ error: 'Unauthorized' });
 
-        if(!['name', 'qty', 'unit', 'whoBrings'].includes(updateKey) && !list.additionalColumns.some(column => column.name === updateKey)){
+        if(!['name', 'qty', 'unit', 'whoBrings', 'completed'].includes(updateKey) && !list.additionalColumns.some(column => column.name === updateKey)){
             return res.status(400).json({ error: 'Invalid update key' });
         }
 
@@ -466,13 +482,13 @@ exports.updateListItem = async (req, res) => {
         await ListItem.findByIdAndUpdate(listItemId, { $set: { [updateKey]: value } });
         
         // Broadcast update to WebSocket clients
-        broadcastToList(list._id.toString(), {
+        broadcastToList(list._id.toString(), {  
             action: 'updateListItem',
             itemId: listItemId.toString(),
             updateKey: updateKey,
             value: value
         });
-        
+        await list.update();
         return res.status(200).json({ message: 'Item updated successfully' });
        
     }
@@ -501,12 +517,13 @@ exports.deleteListItem = async (req, res) => {
         if(!list.ownerId.equals(oid(req.userId)) && !list.collaborators.some(collaborator => collaborator.userId.equals(oid(req.userId)) && collaborator.permissions.includes('deleteListItem')))
             return res.status(401).json({ error: 'Unauthorized' });
         await ListItem.findByIdAndDelete(listItemId);
-        
+        await list.update();
         // Broadcast update to WebSocket clients
         broadcastToList(list._id.toString(), {
             action: 'deleteListItem',
             itemId: listItemId.toString()
         });
+        await list.update();
         
         return res.status(200).json({ message: 'Item deleted successfully' });
     }

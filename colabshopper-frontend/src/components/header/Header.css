@@ -48,6 +48,12 @@
   animation: logoFloat 3s ease-in-out infinite;
 }
 
+.logo img {
+  display: block;
+  width: 40px;
+  height: 40px;
+}
+
 @keyframes logoFloat {
   0%, 100% {
     transform: translateY(0);
@@ -244,7 +250,7 @@
     gap: 0.5rem;
   }
   
-  .logo svg {
+  .logo img {
     width: 32px;
     height: 32px;
   }

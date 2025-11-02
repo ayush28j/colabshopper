@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import './Footer.css';
+import logo from '../../logo.svg';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
@@ -11,16 +12,7 @@ const Footer: React.FC = () => {
         <div className="footer-content">
           <div className="footer-section">
             <div className="footer-logo">
-              <svg width="36" height="36" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect width="40" height="40" rx="8" fill="url(#gradient-footer)"/>
-                <path d="M12 20L18 26L28 14" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                <defs>
-                  <linearGradient id="gradient-footer" x1="0" y1="0" x2="40" y2="40">
-                    <stop offset="0%" stopColor="#667eea"/>
-                    <stop offset="100%" stopColor="#764ba2"/>
-                  </linearGradient>
-                </defs>
-              </svg>
+              <img src={logo} alt="ColabShopper Logo" width="36" height="36" />
               <span className="footer-brand">ColabShopper</span>
             </div>
             <p className="footer-description">

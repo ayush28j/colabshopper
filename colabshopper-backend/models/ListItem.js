@@ -34,6 +34,10 @@ const ListItemSchema = new Schema({
         }],
         default: [],
     },
+    completed: {
+        type: Boolean,
+        default: false,
+    },
     addedBy: {
         type: Schema.Types.ObjectId
     },

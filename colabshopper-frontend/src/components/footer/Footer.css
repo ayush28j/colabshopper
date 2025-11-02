@@ -33,6 +33,12 @@
   margin-bottom: 1rem;
 }
 
+.footer-logo img {
+  display: block;
+  width: 36px;
+  height: 36px;
+}
+
 .footer-brand {
   font-size: 1.5rem;
   font-weight: 700;

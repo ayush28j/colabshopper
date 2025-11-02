@@ -564,6 +564,68 @@
   padding: 2rem;
 }
 
+/* Search Bar */
+.search-bar-container {
+  margin-bottom: 1.5rem;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  padding: 0.75rem 1rem;
+  transition: all 0.3s ease;
+}
+
+.search-input-wrapper:focus-within {
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.2);
+  border: 2px solid #667eea;
+}
+
+.search-icon {
+  color: #a0aec0;
+  margin-right: 0.75rem;
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  color: #2d3748;
+  background: transparent;
+  font-family: inherit;
+}
+
+.search-input::placeholder {
+  color: #a0aec0;
+}
+
+.clear-search-btn {
+  background: none;
+  border: none;
+  color: #a0aec0;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  font-size: 1.125rem;
+  line-height: 1;
+  margin-left: 0.5rem;
+}
+
+.clear-search-btn:hover {
+  background: #edf2f7;
+  color: #667eea;
+}
+
 /* Active Filters Bar */
 .active-filters-bar {
   display: flex;
@@ -653,6 +715,56 @@
   top: 0;
   z-index: 10;
   overflow: visible;
+}
+
+.completed-header {
+  width: 60px;
+  text-align: center;
+  padding: 1rem 0.5rem !important;
+}
+
+.completed-header span {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.completed-cell {
+  text-align: center;
+  width: 60px;
+  padding: 1rem 0.5rem !important;
+}
+
+.completed-checkbox {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #667eea;
+  transition: all 0.2s ease;
+}
+
+.completed-checkbox:hover {
+  transform: scale(1.1);
+}
+
+.table-checkbox {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #667eea;
+  transition: all 0.2s ease;
+}
+
+.table-checkbox:hover {
+  transform: scale(1.1);
+}
+
+.completed-row {
+  opacity: 0.7;
+}
+
+.completed-row td:not(.completed-cell) {
+  text-decoration: line-through;
+  color: #a0aec0;
 }
 
 /* Table Header Content */
@@ -1067,6 +1179,18 @@
   
   .table-pane {
     padding: 1.5rem;
+  }
+  
+  .search-bar-container {
+    margin-bottom: 1rem;
+  }
+  
+  .search-input-wrapper {
+    padding: 0.625rem 0.875rem;
+  }
+  
+  .search-input {
+    font-size: 0.9375rem;
   }
 }
 

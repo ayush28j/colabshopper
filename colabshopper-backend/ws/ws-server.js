@@ -37,10 +37,14 @@ async function authenticateListAccess(listId, token) {
     try {
         const List = mongoose.model('List');
         const list = await List.findById(oid(listId));
+        const ListItem = mongoose.model('ListItem');
         
         if (!list) {
             return { success: false, error: 'List not found' };
         }
+
+        let listItems = await ListItem.find({listId: list._id});
+        list.items = listItems;
 
         // Public lists don't need authentication
         if (list.isPublic) {

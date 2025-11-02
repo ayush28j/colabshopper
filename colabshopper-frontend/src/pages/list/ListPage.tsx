@@ -57,6 +57,9 @@ const ListPage: React.FC = () => {
   // Column filters
   const [columnFilters, setColumnFilters] = useState<{ [key: string]: string }>({});
   const [showFilterDropdown, setShowFilterDropdown] = useState<string | null>(null);
+  
+  // Search
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   const baseColumns = useMemo(() => ['name', 'qty', 'unit', 'whoBrings'], []);
   const dynamicColumns = useMemo(() => list?.additionalColumns?.map(c => c.name) || [], [list]);
@@ -99,11 +102,16 @@ const ListPage: React.FC = () => {
   const getColumnFilterOptions = (colName: string): string[] => {
     if (!list?.items) return [];
     const values = new Set<string>();
+    const colType = getColumnType(colName);
     
     if (colName === 'whoBrings') {
       list.items.forEach(item => {
         item.whoBrings?.forEach(w => w.userName && values.add(w.userName));
       });
+    } else if (colType === 'checkbox') {
+      // For checkbox columns, show boolean values
+      values.add('true');
+      values.add('false');
     } else {
       list.items.forEach(item => {
         const value = (item as any)[colName];
@@ -121,25 +129,42 @@ const ListPage: React.FC = () => {
     return !['name', 'qty', 'unit'].includes(colName);
   };
   
-  // Filter items based on active filters
+  // Filter items based on active filters and search query
   const filteredItems = useMemo(() => {
     if (!list?.items) return [];
     
-    // If no filters are active, return all items
-    const activeFilters = Object.entries(columnFilters).filter(([_, value]) => value);
-    if (activeFilters.length === 0) return list.items;
+    let items = list.items;
     
-    return list.items.filter(item => {
+    // Apply search filter first
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      items = items.filter(item => 
+        item.name?.toLowerCase().includes(query)
+      );
+    }
+    
+    // Then apply column filters
+    const activeFilters = Object.entries(columnFilters).filter(([_, value]) => value);
+    if (activeFilters.length === 0) return items;
+    
+    return items.filter(item => {
       return activeFilters.every(([col, filterValue]) => {
         if (col === 'whoBrings') {
           return item.whoBrings?.some(w => w.userName === filterValue);
         } else {
+          const colType = getColumnType(col);
           const itemValue = (item as any)[col];
+          if (colType === 'checkbox') {
+            // For checkbox, compare boolean values
+            const itemBool = itemValue === true || itemValue === 'true';
+            const filterBool = filterValue === 'true';
+            return itemBool === filterBool;
+          }
           return String(itemValue) === filterValue;
         }
       });
     });
-  }, [list?.items, columnFilters]);
+  }, [list?.items, columnFilters, list?.additionalColumns, searchQuery]);
 
   // Check if current user can add collaborators
   const canAddCollaborator = useMemo(() => {
@@ -255,7 +280,7 @@ const ListPage: React.FC = () => {
     const connect = () => {
       if (cleanup || attempts >= MAX) return;
       
-      socket = new WebSocket('ws://localhost:8000/ws');
+      socket = new WebSocket('wss://backend.colabshopper.com/ws');
       
       socket.onopen = () => {
         attempts = 0;
@@ -495,7 +520,15 @@ const ListPage: React.FC = () => {
       unit: newItem.unit || 'pcs',
     };
     dynamicColumns.forEach(col => {
-      if (newItem[col]) payload[col] = newItem[col];
+      const colType = getColumnType(col);
+      if (colType === 'checkbox') {
+        // For checkbox, include the value (true/false) only if it's checked
+        if (newItem[col] === true || newItem[col] === 'true') {
+          payload[col] = true;
+        }
+      } else if (newItem[col]) {
+        payload[col] = newItem[col];
+      }
     });
     
     // Handle whoBrings
@@ -520,7 +553,17 @@ const ListPage: React.FC = () => {
     
     try {
       await addListItemApi(listId, payload);
-      setNewItem({ name: '', qty: '', unit: 'pcs' });
+      // Reset new item form, but preserve dynamic columns structure
+      const resetItem: { [k: string]: any } = { name: '', qty: '', unit: 'pcs' };
+      dynamicColumns.forEach(col => {
+        const colType = getColumnType(col);
+        if (colType === 'checkbox') {
+          resetItem[col] = false;
+        } else {
+          resetItem[col] = '';
+        }
+      });
+      setNewItem(resetItem);
       await refresh();
     } catch (e: any) {
       handleError(e, 'Failed to add item');
@@ -534,6 +577,17 @@ const ListPage: React.FC = () => {
       await refresh();
     } catch (e: any) {
       handleError(e, 'Failed to update item');
+    }
+  };
+
+  const onToggleCompleted = async (item: ListItem) => {
+    if (!listId) return;
+    try {
+      const newCompleted = !(item.completed ?? false);
+      await updateListItemApi(listId, item._id, 'completed', newCompleted);
+      // No need to refresh - WebSocket will handle the update
+    } catch (e: any) {
+      handleError(e, 'Failed to update completed status');
     }
   };
 
@@ -863,6 +917,7 @@ const ListPage: React.FC = () => {
                   <option value="text">Text</option>
                   <option value="number">Number</option>
                   <option value="person">Person</option>
+                  <option value="checkbox">Checkbox</option>
                 </select>
               </div>
               <button onClick={onAddColumn} style={{ width: '100%' }}>Add Column</button>
@@ -879,6 +934,30 @@ const ListPage: React.FC = () => {
         </div>
 
         <div className="table-pane">
+          <div className="search-bar-container">
+            <div className="search-input-wrapper">
+              <svg className="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search items by name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button 
+                  className="clear-search-btn"
+                  onClick={() => setSearchQuery('')}
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+          
           {Object.keys(columnFilters).length > 0 && (
             <div className="active-filters-bar">
               <span className="filter-count">
@@ -893,6 +972,9 @@ const ListPage: React.FC = () => {
             <table className="list-table">
               <thead>
                 <tr>
+                  <th className="completed-header">
+                    <span>✓</span>
+                  </th>
                   {allColumns.map(col => (
                     <th key={col}>
                       <div className="th-content">
@@ -946,6 +1028,7 @@ const ListPage: React.FC = () => {
               </thead>
               <tbody>
                 <tr className="new-row">
+                  <td className="completed-cell"></td>
                   {allColumns.map(col => {
                     const colType = getColumnType(col);
                     return (
@@ -961,6 +1044,13 @@ const ListPage: React.FC = () => {
                               <option key={name} value={name}>{name}</option>
                             ))}
                           </select>
+                        ) : colType === 'checkbox' ? (
+                          <input
+                            type="checkbox"
+                            checked={newItem[col] === true || newItem[col] === 'true'}
+                            onChange={(e) => setNewItem(prev => ({ ...prev, [col]: e.target.checked }))}
+                            className="table-checkbox"
+                          />
                         ) : (
                           <input
                             type={colType === 'number' ? 'number' : 'text'}
@@ -978,7 +1068,16 @@ const ListPage: React.FC = () => {
                 </tr>
 
                 {filteredItems.map(item => (
-                  <tr key={item._id}>
+                  <tr key={item._id} className={item.completed ? 'completed-row' : ''}>
+                    <td className="completed-cell">
+                      <input
+                        type="checkbox"
+                        checked={item.completed ?? false}
+                        onChange={() => onToggleCompleted(item)}
+                        className="completed-checkbox"
+                        title="Mark as completed"
+                      />
+                    </td>
                     {allColumns.map(col => {
                       const colType = getColumnType(col);
                       return (
@@ -998,6 +1097,13 @@ const ListPage: React.FC = () => {
                                 ✎
                               </button>
                             </div>
+                          ) : colType === 'checkbox' ? (
+                            <input
+                              type="checkbox"
+                              checked={(item as any)[col] === true || (item as any)[col] === 'true'}
+                              onChange={(e) => onUpdateCell(item, col, e.target.checked)}
+                              className="table-checkbox"
+                            />
                           ) : colType === 'person' ? (
                             <PersonEditable
                               value={String((item as any)[col] ?? '')}

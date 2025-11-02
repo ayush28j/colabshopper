@@ -20,4 +20,10 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
 .env
+
+# personal scripts
+colabshopper-backend/common-items-modified.json
+colabshopper-backend/common-items.json
+colabshopper-backend/test.js
