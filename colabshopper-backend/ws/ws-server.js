@@ -36,7 +36,7 @@ function verifyToken(token) {
 async function authenticateListAccess(listId, token) {
     try {
         const List = mongoose.model('List');
-        const list = await List.findById(oid(listId));
+        const list = await List.findById(oid(listId)).lean();
         const ListItem = mongoose.model('ListItem');
         
         if (!list) {
@@ -44,6 +44,7 @@ async function authenticateListAccess(listId, token) {
         }
 
         let listItems = await ListItem.find({listId: list._id});
+        console.log(listItems.length);
         list.items = listItems;
 
         // Public lists don't need authentication

@@ -60,6 +60,20 @@ const ListPage: React.FC = () => {
   
   // Search
   const [searchQuery, setSearchQuery] = useState<string>('');
+  
+  // Mobile collapsible pane
+  const [isActionsPaneOpen, setIsActionsPaneOpen] = useState<boolean>(false);
+  
+  // Detect mobile viewport
+  const [isMobile, setIsMobile] = useState<boolean>(window.innerWidth <= 768);
+  
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const baseColumns = useMemo(() => ['name', 'qty', 'unit', 'whoBrings'], []);
   const dynamicColumns = useMemo(() => list?.additionalColumns?.map(c => c.name) || [], [list]);
@@ -178,9 +192,9 @@ const ListPage: React.FC = () => {
 
   // Permission options with better names
   const permissionOptions = [
-    { value: 'addItem', label: 'Add Items' },
-    { value: 'editItem', label: 'Edit Items' },
-    { value: 'deleteItem', label: 'Delete Items' },
+    { value: 'addListItem', label: 'Add Items' },
+    { value: 'updateListItem', label: 'Edit Items' },
+    { value: 'deleteListItem', label: 'Delete Items' },
     { value: 'editDescription', label: 'Edit Description' },
     { value: 'addCollaborator', label: 'Add Collaborators' },
     { value: 'updateCollaboratorPermissions', label: 'Update Collaborator Permissions' },
@@ -780,158 +794,331 @@ const ListPage: React.FC = () => {
         </div>
       )}
       <div className="list-container">
-        <div className="actions-pane">
-          <h2>{list.name}</h2>
-          <div className="list-meta">
-            {isPrivate ? '🔒 Private List' : '🌐 Public List'} • {list.items?.length || 0} items
-          </div>
-          
-          <div className="section">
-            <h3>
-              Description 
-              {!list.isPublic && !editingDescription && (
-                <button 
-                  onClick={() => setEditingDescription(true)} 
-                  style={{ marginLeft: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
-                  disabled={isPrivate && !userLoggedIn}
-                >
-                  ✎ Edit
-                </button>
-              )}
-            </h3>
-            {editingDescription ? (
-              <>
-                <textarea
-                  value={descriptionDraft}
-                  onChange={(e) => setDescriptionDraft(e.target.value)}
-                  rows={3}
-                  placeholder="Describe this list"
-                  autoFocus
-                />
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
-                  <button onClick={onSaveDescription}>Save</button>
-                  <button onClick={onCancelDescription} style={{ background: '#fc8181' }}>Cancel</button>
-                </div>
-              </>
-            ) : (
-              <p style={{ color: list.description ? '#2d3748' : '#a0aec0', fontStyle: list.description ? 'normal' : 'italic', margin: '0.5rem 0 0 0', lineHeight: '1.6' }}>
-                {list.description || 'No description available'}
-              </p>
-            )}
-          </div>
-
-          {!isPrivate && (
-            <div className="section">
-              <h3>Your name {userLoggedIn && '(from account)'}</h3>
-              <input
-                type="text"
-                value={publicUserName}
-                onChange={(e) => setPublicUserName(e.target.value)}
-                placeholder="Enter your display name"
-                readOnly={userLoggedIn}
-                disabled={userLoggedIn}
-                style={userLoggedIn ? { cursor: 'not-allowed', opacity: 0.7 } : {}}
-              />
-            </div>
-          )}
-
-          {isPrivate && canAddCollaborator && (
-            <div className="section">
-              <h3>Collaborators</h3>
-              <input
-                type="email"
-                value={collabEmail}
-                onChange={(e) => setCollabEmail(e.target.value)}
-                placeholder="Collaborator email address"
-                style={{ width: '100%' }}
-              />
-              <button 
-                onClick={onAddCollaboratorClick}
-                style={{ width: '100%', marginTop: '0.75rem' }}
-              >
-                Add Collaborator
-              </button>
+        {isMobile ? (
+          <>
+            {/* Mobile: List name and description outside settings */}
+            <div className="mobile-list-header">
+              <h2>{list.name}</h2>
+              <div className="list-meta">
+                {isPrivate ? '🔒 Private List' : '🌐 Public List'} • {list.items?.length || 0} items
+              </div>
               
-              {list.collaborators && list.collaborators.length > 0 && (
-                <>
-                  <div 
-                    className="collab-list-header"
-                    onClick={() => setCollabListExpanded(!collabListExpanded)}
-                  >
-                    <span>Current Collaborators ({list.collaborators.length})</span>
-                    <span className={`expand-arrow ${collabListExpanded ? 'expanded' : ''}`}>▼</span>
-                  </div>
-                  {collabListExpanded && (
-                    <ul className="collab-list">
-                      {list.collaborators.map(c => (
-                        <li key={c.userId}>
-                          <div className="collab-info">
-                            <span className="collab-name">{c.userName}</span>
-                            <div className="collab-perms">
-                              {c.permissions.map(p => {
-                                const perm = permissionOptions.find(po => po.value === p);
-                                return perm ? perm.label : p;
-                              }).join(', ')}
-                            </div>
-                          </div>
-                          <div className="collab-actions-vertical">
-                            <button 
-                              onClick={() => onEditPermissionsClick(c.userId, c.permissions, c.userName)}
-                              className="edit-btn-small"
-                              title="Edit Permissions"
-                            >
-                              ✎
-                            </button>
-                            <button 
-                              onClick={() => onRemoveCollaborator(c.userId)}
-                              className="remove-btn-small"
-                              title="Remove Collaborator"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
+              <div className="section">
+                <h3>
+                  Description 
+                  {!list.isPublic && !editingDescription && (
+                    <button 
+                      onClick={() => setEditingDescription(true)} 
+                      style={{ marginLeft: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                      disabled={isPrivate && !userLoggedIn}
+                    >
+                      ✎ Edit
+                    </button>
                   )}
-                </>
+                </h3>
+                {editingDescription ? (
+                  <>
+                    <textarea
+                      value={descriptionDraft}
+                      onChange={(e) => setDescriptionDraft(e.target.value)}
+                      rows={3}
+                      placeholder="Describe this list"
+                      autoFocus
+                    />
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                      <button onClick={onSaveDescription}>Save</button>
+                      <button onClick={onCancelDescription} style={{ background: '#fc8181' }}>Cancel</button>
+                    </div>
+                  </>
+                ) : (
+                  <p style={{ color: list.description ? '#2d3748' : '#a0aec0', fontStyle: list.description ? 'normal' : 'italic', margin: '0.5rem 0 0 0', lineHeight: '1.6' }}>
+                    {list.description || 'No description available'}
+                  </p>
+                )}
+              </div>
+               {/* Mobile: Settings button */}
+              <button 
+                className="mobile-toggle-pane-btn"
+                onClick={() => setIsActionsPaneOpen(!isActionsPaneOpen)}
+                aria-label="Toggle actions pane"
+              >
+                <span>{isActionsPaneOpen ? '▼' : '▶'}</span>
+                <span>{isActionsPaneOpen ? 'Hide' : 'Show'} Settings</span>
+              </button>
+            </div>
+
+           
+
+            {/* Mobile: Separate settings pane */}
+            <div className={`mobile-settings-pane ${isActionsPaneOpen ? 'open' : ''}`}>
+              {!isPrivate && (
+                <div className="section">
+                  <h3>Your name {userLoggedIn && '(from account)'}</h3>
+                  <input
+                    type="text"
+                    value={publicUserName}
+                    onChange={(e) => setPublicUserName(e.target.value)}
+                    placeholder="Enter your display name"
+                    readOnly={userLoggedIn}
+                    disabled={userLoggedIn}
+                    style={userLoggedIn ? { cursor: 'not-allowed', opacity: 0.7 } : {}}
+                  />
+                </div>
+              )}
+
+              {isPrivate && canAddCollaborator && (
+                <div className="section">
+                  <h3>Collaborators</h3>
+                  <input
+                    type="email"
+                    value={collabEmail}
+                    onChange={(e) => setCollabEmail(e.target.value)}
+                    placeholder="Collaborator email address"
+                    style={{ width: '100%' }}
+                  />
+                  <button 
+                    onClick={onAddCollaboratorClick}
+                    style={{ width: '100%', marginTop: '0.75rem' }}
+                  >
+                    Add Collaborator
+                  </button>
+                  
+                  {list.collaborators && list.collaborators.length > 0 && (
+                    <>
+                      <div 
+                        className="collab-list-header"
+                        onClick={() => setCollabListExpanded(!collabListExpanded)}
+                      >
+                        <span>Current Collaborators ({list.collaborators.length})</span>
+                        <span className={`expand-arrow ${collabListExpanded ? 'expanded' : ''}`}>▼</span>
+                      </div>
+                      {collabListExpanded && (
+                        <ul className="collab-list">
+                          {list.collaborators.map(c => (
+                            <li key={c.userId}>
+                              <div className="collab-info">
+                                <span className="collab-name">{c.userName}</span>
+                                <div className="collab-perms">
+                                  {c.permissions.map(p => {
+                                    const perm = permissionOptions.find(po => po.value === p);
+                                    return perm ? perm.label : p;
+                                  }).join(', ')}
+                                </div>
+                              </div>
+                              <div className="collab-actions-vertical">
+                                <button 
+                                  onClick={() => onEditPermissionsClick(c.userId, c.permissions, c.userName)}
+                                  className="edit-btn-small"
+                                  title="Edit Permissions"
+                                >
+                                  ✎
+                                </button>
+                                <button 
+                                  onClick={() => onRemoveCollaborator(c.userId)}
+                                  className="remove-btn-small"
+                                  title="Remove Collaborator"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {!list.isPublic && (
+                <div className="section">
+                  <h3>Columns</h3>
+                  <div className="row">
+                    <input
+                      type="text"
+                      value={addColName}
+                      onChange={(e) => setAddColName(e.target.value)}
+                      placeholder="Column name"
+                    />
+                    <select 
+                      value={addColType} 
+                      onChange={(e) => setAddColType(e.target.value)}
+                      className="styled-select"
+                    >
+                      <option value="text">Text</option>
+                      <option value="number">Number</option>
+                      <option value="person">Person</option>
+                      <option value="checkbox">Checkbox</option>
+                    </select>
+                  </div>
+                  <button onClick={onAddColumn} style={{ width: '100%' }}>Add Column</button>
+                  <div className="chips">
+                    {dynamicColumns.map(col => (
+                      <span key={col} className="chip">
+                        {col}
+                        <button onClick={() => onRemoveColumnClick(col)} title="Remove">×</button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
-          )}
-
-          {!list.isPublic && (
+          </>
+        ) : (
+          /* Desktop: Original actions pane with everything */
+          <div className="actions-pane">
+            <h2>{list.name}</h2>
+            <div className="list-meta">
+              {isPrivate ? '🔒 Private List' : '🌐 Public List'} • {list.items?.length || 0} items
+            </div>
+            
             <div className="section">
-              <h3>Columns</h3>
-              <div className="row">
+              <h3>
+                Description 
+                {!list.isPublic && !editingDescription && (
+                  <button 
+                    onClick={() => setEditingDescription(true)} 
+                    style={{ marginLeft: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                    disabled={isPrivate && !userLoggedIn}
+                  >
+                    ✎ Edit
+                  </button>
+                )}
+              </h3>
+              {editingDescription ? (
+                <>
+                  <textarea
+                    value={descriptionDraft}
+                    onChange={(e) => setDescriptionDraft(e.target.value)}
+                    rows={3}
+                    placeholder="Describe this list"
+                    autoFocus
+                  />
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                    <button onClick={onSaveDescription}>Save</button>
+                    <button onClick={onCancelDescription} style={{ background: '#fc8181' }}>Cancel</button>
+                  </div>
+                </>
+              ) : (
+                <p style={{ color: list.description ? '#2d3748' : '#a0aec0', fontStyle: list.description ? 'normal' : 'italic', margin: '0.5rem 0 0 0', lineHeight: '1.6' }}>
+                  {list.description || 'No description available'}
+                </p>
+              )}
+            </div>
+
+            {!isPrivate && (
+              <div className="section">
+                <h3>Your name {userLoggedIn && '(from account)'}</h3>
                 <input
                   type="text"
-                  value={addColName}
-                  onChange={(e) => setAddColName(e.target.value)}
-                  placeholder="Column name"
+                  value={publicUserName}
+                  onChange={(e) => setPublicUserName(e.target.value)}
+                  placeholder="Enter your display name"
+                  readOnly={userLoggedIn}
+                  disabled={userLoggedIn}
+                  style={userLoggedIn ? { cursor: 'not-allowed', opacity: 0.7 } : {}}
                 />
-                <select 
-                  value={addColType} 
-                  onChange={(e) => setAddColType(e.target.value)}
-                  className="styled-select"
+              </div>
+            )}
+
+            {isPrivate && canAddCollaborator && (
+              <div className="section">
+                <h3>Collaborators</h3>
+                <input
+                  type="email"
+                  value={collabEmail}
+                  onChange={(e) => setCollabEmail(e.target.value)}
+                  placeholder="Collaborator email address"
+                  style={{ width: '100%' }}
+                />
+                <button 
+                  onClick={onAddCollaboratorClick}
+                  style={{ width: '100%', marginTop: '0.75rem' }}
                 >
-                  <option value="text">Text</option>
-                  <option value="number">Number</option>
-                  <option value="person">Person</option>
-                  <option value="checkbox">Checkbox</option>
-                </select>
+                  Add Collaborator
+                </button>
+                
+                {list.collaborators && list.collaborators.length > 0 && (
+                  <>
+                    <div 
+                      className="collab-list-header"
+                      onClick={() => setCollabListExpanded(!collabListExpanded)}
+                    >
+                      <span>Current Collaborators ({list.collaborators.length})</span>
+                      <span className={`expand-arrow ${collabListExpanded ? 'expanded' : ''}`}>▼</span>
+                    </div>
+                    {collabListExpanded && (
+                      <ul className="collab-list">
+                        {list.collaborators.map(c => (
+                          <li key={c.userId}>
+                            <div className="collab-info">
+                              <span className="collab-name">{c.userName}</span>
+                              <div className="collab-perms">
+                                {c.permissions.map(p => {
+                                  const perm = permissionOptions.find(po => po.value === p);
+                                  return perm ? perm.label : p;
+                                }).join(', ')}
+                              </div>
+                            </div>
+                            <div className="collab-actions-vertical">
+                              <button 
+                                onClick={() => onEditPermissionsClick(c.userId, c.permissions, c.userName)}
+                                className="edit-btn-small"
+                                title="Edit Permissions"
+                              >
+                                ✎
+                              </button>
+                              <button 
+                                onClick={() => onRemoveCollaborator(c.userId)}
+                                className="remove-btn-small"
+                                title="Remove Collaborator"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
+                )}
               </div>
-              <button onClick={onAddColumn} style={{ width: '100%' }}>Add Column</button>
-              <div className="chips">
-                {dynamicColumns.map(col => (
-                  <span key={col} className="chip">
-                    {col}
-                    <button onClick={() => onRemoveColumnClick(col)} title="Remove">×</button>
-                  </span>
-                ))}
+            )}
+
+            {!list.isPublic && (
+              <div className="section">
+                <h3>Columns</h3>
+                <div className="row">
+                  <input
+                    type="text"
+                    value={addColName}
+                    onChange={(e) => setAddColName(e.target.value)}
+                    placeholder="Column name"
+                  />
+                  <select 
+                    value={addColType} 
+                    onChange={(e) => setAddColType(e.target.value)}
+                    className="styled-select"
+                  >
+                    <option value="text">Text</option>
+                    <option value="number">Number</option>
+                    <option value="person">Person</option>
+                    <option value="checkbox">Checkbox</option>
+                  </select>
+                </div>
+                <button onClick={onAddColumn} style={{ width: '100%' }}>Add Column</button>
+                <div className="chips">
+                  {dynamicColumns.map(col => (
+                    <span key={col} className="chip">
+                      {col}
+                      <button onClick={() => onRemoveColumnClick(col)} title="Remove">×</button>
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         <div className="table-pane">
           <div className="search-bar-container">
