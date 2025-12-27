@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import './list.css';
 import {
@@ -18,6 +18,7 @@ import {
   isLoggedIn,
   getCurrentUser,
   getAccessToken,
+  deleteListApi,
 } from '../../utils/api';
 
 const ListPage: React.FC = () => {
@@ -49,10 +50,17 @@ const ListPage: React.FC = () => {
   const [showWhoBringsModal, setShowWhoBringsModal] = useState(false);
   const [editingItem, setEditingItem] = useState<ListItem | null>(null);
   const [whoBringers, setWhoBringers] = useState<Array<{ name: string; qty: string; userId?: string }>>([]);
+
+  const [showDeleteListModal, setShowDeleteListModal] = useState(false);
   
   // Delete column confirmation
   const [showDeleteColumnModal, setShowDeleteColumnModal] = useState(false);
   const [columnToDelete, setColumnToDelete] = useState<string | null>(null);
+
+  // Delete item confirmation
+  const [showDeleteItemModal, setShowDeleteItemModal] = useState(false);
+  const [dontShowDeleteItemModalAgain, setDontShowDeleteItemModalAgain] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{itemId: string, itemName: string} | null>(null);
   
   // Column filters
   const [columnFilters, setColumnFilters] = useState<{ [key: string]: string }>({});
@@ -79,12 +87,12 @@ const ListPage: React.FC = () => {
   const dynamicColumns = useMemo(() => list?.additionalColumns?.map(c => c.name) || [], [list]);
   const allColumns = useMemo(() => [...baseColumns, ...dynamicColumns], [baseColumns, dynamicColumns]);
   
-  const getColumnType = (colName: string): string => {
+  const getColumnType = useCallback((colName: string): string => {
     if (colName === 'qty') return 'number';
     if (colName === 'whoBrings') return 'whoBrings';
     const col = list?.additionalColumns?.find(c => c.name === colName);
     return col?.type || 'text';
-  };
+  }, [list?.additionalColumns]);
   
   const whoBringsOptions = useMemo(() => {
     if (!list) return [];
@@ -140,7 +148,25 @@ const ListPage: React.FC = () => {
   
   // Check if a column is filterable
   const isFilterableColumn = (colName: string): boolean => {
-    return !['name', 'qty', 'unit'].includes(colName);
+    const colType = getColumnType(colName);
+    return !['name', 'qty', 'unit'].includes(colName) && colType !== 'price';
+  };
+
+  // Check if column is a price type
+  const isPriceColumn = (colName: string): boolean => {
+    const colType = getColumnType(colName);
+    return colType === 'price';
+  }
+
+  // Calculate total price for a price column
+  const getTotalPriceForColumn = (colName: string): number => {
+    if (!list?.items) return 0;
+    return list.items.map(v => Number(v[colName]) || 0).reduce((a, b) => a + b, 0);
+  };
+
+  // Format price to locale with commas and 2 decimals
+  const formatPrice = (value: number): string => {
+    return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
   
   // Filter items based on active filters and search query
@@ -178,7 +204,7 @@ const ListPage: React.FC = () => {
         }
       });
     });
-  }, [list?.items, columnFilters, list?.additionalColumns, searchQuery]);
+  }, [list?.items, columnFilters, searchQuery, getColumnType]);
 
   // Check if current user can add collaborators
   const canAddCollaborator = useMemo(() => {
@@ -336,6 +362,26 @@ const ListPage: React.FC = () => {
     alert(err?.message || msg);
   };
 
+  const onDeleteListClick = async () => {
+    setShowDeleteListModal(true);
+  }
+
+  const onCancelDeleteList = () => {
+    setShowDeleteListModal(false);
+  };
+
+  const onConfirmDeleteList = async () => {
+    if (!listId) return;
+    try {
+      await deleteListApi(listId);
+      setShowDeleteListModal(false);
+      // Redirect to home or my-lists page
+      window.location.href = '/my-lists';
+    } catch (e: any) {
+      handleError(e, 'Failed to remove column');
+    }
+  }
+
   const onSaveDescription = async () => {
     if (!list || !listId) return;
     try {
@@ -385,6 +431,34 @@ const ListPage: React.FC = () => {
     setColumnToDelete(null);
   };
   
+
+  const onDeleteItemClick = async (itemId: string, itemName: string) => {
+    setItemToDelete({itemId, itemName});
+    if(dontShowDeleteItemModalAgain)
+      onConfirmDeleteItem(itemId, true)
+    else
+      setShowDeleteItemModal(true);
+
+  };
+
+  const onConfirmDeleteItem = async (itemId: string, dontShowAgain: boolean = false) => {
+    if (!listId || !itemId) return;
+    if(dontShowAgain && !dontShowDeleteItemModalAgain)
+      setDontShowDeleteItemModalAgain(true);
+    try {
+      await deleteItem(itemId);
+      setItemToDelete(null);
+      setShowDeleteItemModal(false);
+    } catch (e: any) {
+      handleError(e, 'Failed to remove column');
+    }
+  };
+  
+  const onCancelDeleteItem = () => {
+    setShowDeleteItemModal(false);
+    setItemToDelete(null);
+  };
+
   const toggleFilterDropdown = (colName: string) => {
     setShowFilterDropdown(showFilterDropdown === colName ? null : colName);
   };
@@ -605,7 +679,7 @@ const ListPage: React.FC = () => {
     }
   };
 
-  const onDeleteItem = async (itemId: string) => {
+  const deleteItem = async (itemId: string) => {
     if (!listId) return;
     try {
       await deleteListItemApi(listId, itemId);
@@ -798,9 +872,18 @@ const ListPage: React.FC = () => {
           <>
             {/* Mobile: List name and description outside settings */}
             <div className="mobile-list-header">
-              <h2>{list.name}</h2>
-              <div className="list-meta">
-                {isPrivate ? '🔒 Private List' : '🌐 Public List'} • {list.items?.length || 0} items
+              <div className='list-title-section'>
+                <div className="list-title-details">
+                  <h2>{list.name}</h2>
+                  <div className="list-meta">
+                    {isPrivate ? '🔒 Private List' : '🌐 Public List'} • {list.items?.length || 0} items
+                  </div>
+                </div>
+                {list && !list.isPublic && list.ownerId === currentUserId && (
+                  <div className="list-title-actions">
+                    <button onClick={() => onDeleteListClick()} title="Delete List">🗑️</button>
+                  </div>
+                )}
               </div>
               
               <div className="section">
@@ -947,6 +1030,7 @@ const ListPage: React.FC = () => {
                     >
                       <option value="text">Text</option>
                       <option value="number">Number</option>
+                      <option value="price">Price/Cost</option>
                       <option value="person">Person</option>
                       <option value="checkbox">Checkbox</option>
                     </select>
@@ -967,9 +1051,18 @@ const ListPage: React.FC = () => {
         ) : (
           /* Desktop: Original actions pane with everything */
           <div className="actions-pane">
-            <h2>{list.name}</h2>
-            <div className="list-meta">
-              {isPrivate ? '🔒 Private List' : '🌐 Public List'} • {list.items?.length || 0} items
+            <div className='list-title-section'>
+              <div className="list-title-details">
+                <h2>{list.name}</h2>
+                <div className="list-meta">
+                  {isPrivate ? '🔒 Private List' : '🌐 Public List'} • {list.items?.length || 0} items
+                </div>
+              </div>
+              {list && !list.isPublic && list.ownerId === currentUserId && (
+                <div className="list-title-actions">
+                  <button onClick={() => onDeleteListClick()} title="Delete List">🗑️</button>
+                </div>
+              )}
             </div>
             
             <div className="section">
@@ -1102,6 +1195,7 @@ const ListPage: React.FC = () => {
                   >
                     <option value="text">Text</option>
                     <option value="number">Number</option>
+                    <option value="price">Price/Cost</option>
                     <option value="person">Person</option>
                     <option value="checkbox">Checkbox</option>
                   </select>
@@ -1240,7 +1334,7 @@ const ListPage: React.FC = () => {
                           />
                         ) : (
                           <input
-                            type={colType === 'number' ? 'number' : 'text'}
+                            type={colType === 'number' || colType === 'price' ? 'number' : 'text'}
                             value={newItem[col] ?? ''}
                             onChange={(e) => setNewItem(prev => ({ ...prev, [col]: e.target.value }))}
                             placeholder={col}
@@ -1300,19 +1394,39 @@ const ListPage: React.FC = () => {
                           ) : (
                             <InlineEditable
                               value={String((item as any)[col] ?? '')}
-                              inputType={colType === 'number' ? 'number' : 'text'}
-                              onSave={(val) => onUpdateCell(item, col, colType === 'number' ? Number(val) : val)}
+                              inputType={colType === 'number' || colType === 'price' ? 'number' : 'text'}
+                              onSave={(val) => onUpdateCell(item, col, colType === 'number' || colType === 'price' ? Number(val) : val)}
                             />
                           )}
                         </td>
                       );
                     })}
                     <td>
-                      <button onClick={() => onDeleteItem(item._id)} title="Delete">🗑️</button>
+                      <button onClick={() => onDeleteItemClick(item._id, item.name)} title="Delete">🗑️</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr>
+                  <td className="completed-header">
+                  </td>
+                  {allColumns.map(col => (
+                    <td key={col}>
+                      <div className="tf-content">
+                        {col === 'name' && (
+                          <span>Total: </span>
+                        )}
+                        {isPriceColumn(col) && (
+                          <span>
+                            {formatPrice(getTotalPriceForColumn(col))}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>
@@ -1523,6 +1637,62 @@ const ListPage: React.FC = () => {
                 Yes, Delete
               </button>
               <button onClick={onCancelDeleteColumn} className="secondary-btn">
+                No, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+       {/* Delete Item Confirmation Modal */}
+       {showDeleteListModal && (
+        <div className="perms-modal-overlay" onClick={onCancelDeleteList}>
+          <div className="perms-modal delete-column-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>⚠️ Delete List</h2>
+            <p className="modal-subtitle">
+              Are you sure you want to delete this entire list <strong>"{list.name}"</strong>? 
+            </p>
+            <p className="warning-text">
+              Once the list is deleted, all data related to this list will be permanently removed. 
+              This action is irreversible.
+            </p>
+            <div className="modal-actions">
+              <button 
+                onClick={onConfirmDeleteList}
+                className="danger-btn"
+              >
+                Yes, Delete
+              </button>
+              <button onClick={onCancelDeleteList} className="secondary-btn">
+                No, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Item Confirmation Modal */}
+      {showDeleteItemModal && itemToDelete && (
+        <div className="perms-modal-overlay" onClick={onCancelDeleteItem}>
+          <div className="perms-modal delete-column-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>⚠️ Delete Item</h2>
+            <p className="modal-subtitle">
+              Are you sure you want to delete this item <strong>"{itemToDelete.itemName}"</strong>? 
+            </p>
+            <div className="modal-actions">
+            <button 
+                onClick={() => onConfirmDeleteItem(itemToDelete.itemId, true)}
+                className="danger-btn"
+              >
+                Delete and don't show again
+              </button>
+              <button 
+                onClick={() => onConfirmDeleteItem(itemToDelete.itemId)}
+                className="danger-btn"
+              >
+                Yes, Delete
+              </button>
+              <button onClick={onCancelDeleteItem} className="secondary-btn">
                 No, Cancel
               </button>
             </div>

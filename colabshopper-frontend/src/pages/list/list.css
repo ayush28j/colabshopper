@@ -269,9 +269,6 @@
 .list-meta {
   font-size: 0.875rem;
   color: #718096;
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 2px solid #e2e8f0;
 }
 
 .section {
@@ -840,6 +837,14 @@
   justify-content: space-between;
 }
 
+/* Table Header Content */
+.tf-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
 /* Filter Container */
 .filter-container {
   position: relative;
@@ -1293,9 +1298,6 @@
   .mobile-list-header .list-meta {
     font-size: 0.875rem;
     color: #718096;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #e2e8f0;
   }
 
   .mobile-list-header .section {
@@ -1502,8 +1504,20 @@
     gap: 0.35rem;
     flex-wrap: nowrap;
   }
+
+  .tf-content {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    flex-wrap: nowrap;
+  }
   
   .th-content span {
+    white-space: nowrap;
+  }
+
+  .tf-content span {
     white-space: nowrap;
   }
   
@@ -2175,4 +2189,37 @@
 .danger-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(255, 71, 87, 0.4);
+}
+
+.list-title-section{
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.list-title-section .list-title-details{
+  flex: 1;
+}
+
+.list-title-section .list-title-actions button{
+  background: #fc8181;
+  box-shadow: 0 2px 8px rgba(252, 129, 129, 0.3);
+  padding: 0.5rem 0.75rem;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.list-title-section .list-title-actions button:hover{
+  background: #f56565;
+  box-shadow: 0 4px 12px rgba(252, 129, 129, 0.4);
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }

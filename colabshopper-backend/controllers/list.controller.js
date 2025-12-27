@@ -89,7 +89,7 @@ exports.getCollaboratingLists = async (req, res) => {
 exports.getList = async (req, res) => {
     try{
         let list = req.list;
-        let listItems = await ListItem.find({listId: list._id});
+        let listItems = await ListItem.find({listId: list._id}).collation({locale: "en", strength: 2}).sort({name: 1}).lean();
         // if(!list.isPublic){
         //     let userIds = listItems.map(item => item.whoBrings.map(who => who.userId)).flat();
         //     let users = await User.find({_id: {$in: userIds}});
@@ -113,7 +113,7 @@ exports.deleteList = async (req, res) => {
         if(list.isPublic)
             return res.status(400).json({ error: 'Cannot delete public list' });
 
-        if(list.ownerId !== req.userId)
+        if(!list.ownerId.equals(oid(req.userId)))
             return res.status(401).json({ error: 'Unauthorized' });
         
         // Broadcast update to WebSocket clients before deletion

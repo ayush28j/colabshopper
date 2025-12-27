@@ -260,6 +260,12 @@ export async function removeAdditionalColumnApi(listId: string, columnName: stri
   });
 }
 
+export async function deleteListApi(listId: string): Promise<{ message: string }> {
+  return await request<{ message: string }>(`/list/${listId}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function addListItemApi(listId: string, payload: any): Promise<{ message: string }> {
   return await request<{ message: string }>(`/list/${listId}/item`, {
     method: 'POST',
