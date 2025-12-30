@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import './list.css';
 import {
@@ -65,6 +65,8 @@ const ListPage: React.FC = () => {
   // Column filters
   const [columnFilters, setColumnFilters] = useState<{ [key: string]: string }>({});
   const [showFilterDropdown, setShowFilterDropdown] = useState<string | null>(null);
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   
   // Search
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -152,6 +154,13 @@ const ListPage: React.FC = () => {
     return !['name', 'qty', 'unit'].includes(colName) && colType !== 'price';
   };
 
+  // Check if a column is sortable (name, qty, or custom columns with type text/number/price)
+  const isSortableColumn = useCallback((colName: string): boolean => {
+    if (colName === 'name' || colName === 'qty') return true;
+    const colType = getColumnType(colName);
+    return ['text', 'number', 'price'].includes(colType);
+  }, [getColumnType]);
+
   // Check if column is a price type
   const isPriceColumn = (colName: string): boolean => {
     const colType = getColumnType(colName);
@@ -169,7 +178,19 @@ const ListPage: React.FC = () => {
     return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
   
-  // Filter items based on active filters and search query
+  // Handle sort column click
+  const handleSort = (colName: string) => {
+    if (sortColumn === colName) {
+      // Toggle direction if same column
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new column with ascending direction
+      setSortColumn(colName);
+      setSortDirection('asc');
+    }
+  };
+
+  // Filter and sort items based on active filters, search query, and sort settings
   const filteredItems = useMemo(() => {
     if (!list?.items) return [];
     
@@ -185,26 +206,63 @@ const ListPage: React.FC = () => {
     
     // Then apply column filters
     const activeFilters = Object.entries(columnFilters).filter(([_, value]) => value);
-    if (activeFilters.length === 0) return items;
-    
-    return items.filter(item => {
-      return activeFilters.every(([col, filterValue]) => {
-        if (col === 'whoBrings') {
-          return item.whoBrings?.some(w => w.userName === filterValue);
-        } else {
-          const colType = getColumnType(col);
-          const itemValue = (item as any)[col];
-          if (colType === 'checkbox') {
-            // For checkbox, compare boolean values
-            const itemBool = itemValue === true || itemValue === 'true';
-            const filterBool = filterValue === 'true';
-            return itemBool === filterBool;
+    if (activeFilters.length > 0) {
+      items = items.filter(item => {
+        return activeFilters.every(([col, filterValue]) => {
+          if (col === 'whoBrings') {
+            return item.whoBrings?.some(w => w.userName === filterValue);
+          } else {
+            const colType = getColumnType(col);
+            const itemValue = (item as any)[col];
+            if (colType === 'checkbox') {
+              // For checkbox, compare boolean values
+              const itemBool = itemValue === true || itemValue === 'true';
+              const filterBool = filterValue === 'true';
+              return itemBool === filterBool;
+            }
+            return String(itemValue) === filterValue;
           }
-          return String(itemValue) === filterValue;
-        }
+        });
       });
-    });
-  }, [list?.items, columnFilters, searchQuery, getColumnType]);
+    }
+    
+    // Apply sorting
+    if (sortColumn && isSortableColumn(sortColumn)) {
+      const colType = getColumnType(sortColumn);
+      items = [...items].sort((a, b) => {
+        let aVal: any = (a as any)[sortColumn];
+        let bVal: any = (b as any)[sortColumn];
+        
+        // Handle different column types
+        if (sortColumn === 'name') {
+          aVal = String(aVal || '').toLowerCase();
+          bVal = String(bVal || '').toLowerCase();
+        } else if (sortColumn === 'qty' || colType === 'number' || colType === 'price') {
+          // Numeric sorting
+          aVal = Number(aVal) || 0;
+          bVal = Number(bVal) || 0;
+        } else if (colType === 'text') {
+          // Text sorting
+          aVal = String(aVal || '').toLowerCase();
+          bVal = String(bVal || '').toLowerCase();
+        } else {
+          // Fallback to string
+          aVal = String(aVal || '');
+          bVal = String(bVal || '');
+        }
+        
+        // Compare values
+        let comparison = 0;
+        if (aVal < bVal) comparison = -1;
+        else if (aVal > bVal) comparison = 1;
+        
+        // Apply sort direction
+        return sortDirection === 'asc' ? comparison : -comparison;
+      });
+    }
+    
+    return items;
+  }, [list?.items, columnFilters, searchQuery, sortColumn, sortDirection, getColumnType, isSortableColumn]);
 
   // Check if current user can add collaborators
   const canAddCollaborator = useMemo(() => {
@@ -847,7 +905,7 @@ const ListPage: React.FC = () => {
   const userLoggedIn = isLoggedIn();
 
   return (
-    <div className="list-page">
+    <div className="list-page" data-list-name={list?.name || 'Shopping List'}>
       {showUsernameModal && (
         <div className="username-modal-overlay">
           <div className="username-modal">
@@ -1215,28 +1273,37 @@ const ListPage: React.FC = () => {
         )}
 
         <div className="table-pane">
-          <div className="search-bar-container">
-            <div className="search-input-wrapper">
-              <svg className="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <input
-                type="text"
-                className="search-input"
-                placeholder="Search items by name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <button 
-                  className="clear-search-btn"
-                  onClick={() => setSearchQuery('')}
-                  title="Clear search"
-                >
-                  ✕
-                </button>
-              )}
+          <div className="table-controls">
+            <div className="search-bar-container">
+              <div className="search-input-wrapper">
+                <svg className="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <input
+                  type="text"
+                  className="search-input"
+                  placeholder="Search items by name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button 
+                    className="clear-search-btn"
+                    onClick={() => setSearchQuery('')}
+                    title="Clear search"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
+            <button 
+              className="print-btn"
+              onClick={() => window.print()}
+              title="Print list"
+            >
+              🖨️ Print
+            </button>
           </div>
           
           {Object.keys(columnFilters).length > 0 && (
@@ -1257,9 +1324,23 @@ const ListPage: React.FC = () => {
                     <span>✓</span>
                   </th>
                   {allColumns.map(col => (
-                    <th key={col}>
+                    <th 
+                      key={col}
+                      className={col === 'unit' ? 'unit-header-print' : col === 'qty' ? 'qty-header-print' : ''}
+                    >
                       <div className="th-content">
-                        <span>{col}</span>
+                        <span 
+                          className={isSortableColumn(col) ? 'sortable-column' : ''}
+                          onClick={() => isSortableColumn(col) && handleSort(col)}
+                          title={isSortableColumn(col) ? 'Click to sort' : ''}
+                        >
+                          {col}
+                          {isSortableColumn(col) && sortColumn === col && (
+                            <span className="sort-indicator">
+                              {sortDirection === 'asc' ? ' ↑' : ' ↓'}
+                            </span>
+                          )}
+                        </span>
                         {isFilterableColumn(col) && (
                           <div className="filter-container">
                             <button 
@@ -1343,7 +1424,7 @@ const ListPage: React.FC = () => {
                       </td>
                     );
                   })}
-                  <td>
+                  <td className="no-print">
                     <button onClick={onAddItem} title="Add">＋</button>
                   </td>
                 </tr>
@@ -1362,7 +1443,11 @@ const ListPage: React.FC = () => {
                     {allColumns.map(col => {
                       const colType = getColumnType(col);
                       return (
-                        <td key={col}>
+                        <td 
+                          key={col}
+                          data-unit={col === 'qty' ? (item.unit || '') : undefined}
+                          className={col === 'qty' ? 'qty-cell-print' : col === 'unit' ? 'unit-cell-print' : ''}
+                        >
                           {colType === 'whoBrings' ? (
                             <div className="who-brings-cell">
                               <span className="muted">
@@ -1372,7 +1457,7 @@ const ListPage: React.FC = () => {
                               </span>
                               <button 
                                 onClick={() => onEditWhoBrings(item)} 
-                                className="edit-who-brings-btn"
+                                className="edit-who-brings-btn no-print"
                                 title="Edit Who Brings"
                               >
                                 ✎
@@ -1384,6 +1469,8 @@ const ListPage: React.FC = () => {
                               checked={(item as any)[col] === true || (item as any)[col] === 'true'}
                               onChange={(e) => onUpdateCell(item, col, e.target.checked)}
                               className="table-checkbox"
+                              disabled
+                              readOnly
                             />
                           ) : colType === 'person' ? (
                             <PersonEditable
@@ -1396,13 +1483,22 @@ const ListPage: React.FC = () => {
                               value={String((item as any)[col] ?? '')}
                               inputType={colType === 'number' || colType === 'price' ? 'number' : 'text'}
                               onSave={(val) => onUpdateCell(item, col, colType === 'number' || colType === 'price' ? Number(val) : val)}
+                              columnName={col}
+                              columnType={colType}
+                              allItems={list?.items || []}
                             />
                           )}
                         </td>
                       );
                     })}
                     <td>
-                      <button onClick={() => onDeleteItemClick(item._id, item.name)} title="Delete">🗑️</button>
+                      <button 
+                        className="no-print"
+                        onClick={() => onDeleteItemClick(item._id, item.name)} 
+                        title="Delete"
+                      >
+                        🗑️
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -1412,7 +1508,10 @@ const ListPage: React.FC = () => {
                   <td className="completed-header">
                   </td>
                   {allColumns.map(col => (
-                    <td key={col}>
+                    <td 
+                      key={col}
+                      className={col === 'unit' ? 'unit-cell-print' : ''}
+                    >
                       <div className="tf-content">
                         {col === 'name' && (
                           <span>Total: </span>
@@ -1707,21 +1806,146 @@ const InlineEditable: React.FC<{
   value: string; 
   inputType?: string;
   onSave: (v: string) => void;
-}> = ({ value, inputType = 'text', onSave }) => {
+  columnName?: string;
+  columnType?: string;
+  allItems?: ListItem[];
+}> = ({ value, inputType = 'text', onSave, columnName, columnType, allItems = [] }) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
+  const [autocompleteSuggestions, setAutocompleteSuggestions] = useState<string[]>([]);
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const isTextType = inputType === 'text' && columnType !== 'number' && columnType !== 'price';
+
+  // Get unique previous values for this column (up to 10)
+  const getPreviousValues = useMemo(() => {
+    if (!columnName || !isTextType) return [];
+    const values = new Set<string>();
+    allItems.forEach(item => {
+      const val = String((item as any)[columnName] ?? '').trim();
+      if (val && val !== value) {
+        values.add(val);
+      }
+    });
+    return Array.from(values).slice(0, 15);
+  }, [columnName, allItems, value, isTextType]);
 
   useEffect(() => setDraft(value), [value]);
 
+  // Auto-focus input when editing starts (for text type only)
+  useEffect(() => {
+    if (editing && isTextType && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [editing, isTextType]);
+
+  // Filter autocomplete suggestions based on draft
+  useEffect(() => {
+    if (editing && isTextType && getPreviousValues.length > 0) {
+      if (draft.trim()) {
+        // Filter based on what user is typing
+        const filtered = getPreviousValues.filter(v => 
+          v.toLowerCase().includes(draft.toLowerCase())
+        );
+        setAutocompleteSuggestions(filtered);
+        setShowAutocomplete(filtered.length > 0);
+      } else {
+        // Show all previous values when input is empty
+        setAutocompleteSuggestions(getPreviousValues);
+        setShowAutocomplete(true);
+      }
+    } else {
+      setAutocompleteSuggestions([]);
+      setShowAutocomplete(false);
+    }
+  }, [draft, editing, isTextType, getPreviousValues]);
+
+  // Close autocomplete on outside click
+  useEffect(() => {
+    if (!showAutocomplete) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.inline-edit-autocomplete')) {
+        setShowAutocomplete(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showAutocomplete]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDraft(e.target.value);
+  };
+
+  const handleSelectSuggestion = (suggestion: string) => {
+    setDraft(suggestion);
+    setShowAutocomplete(false);
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      onSave(draft);
+      setEditing(false);
+      setShowAutocomplete(false);
+    } else if (e.key === 'Escape') {
+      setDraft(value);
+      setEditing(false);
+      setShowAutocomplete(false);
+    } else if (e.key === 'Tab' && showAutocomplete && autocompleteSuggestions.length > 0) {
+      e.preventDefault();
+      // Use first autocomplete suggestion
+      const firstSuggestion = autocompleteSuggestions[0];
+      setDraft(firstSuggestion);
+      setShowAutocomplete(false);
+      // Keep editing mode, don't submit
+    }
+  };
+
   return editing ? (
-    <span className="inline-edit">
-      <input 
-        type={inputType} 
-        value={draft} 
-        onChange={(e) => setDraft(e.target.value)} 
-      />
-      <button onClick={() => { onSave(draft); setEditing(false); }} title="Save">✓</button>
-      <button onClick={() => { setDraft(value); setEditing(false); }} title="Cancel">×</button>
+    <span className="inline-edit inline-edit-autocomplete">
+      <div style={{ position: 'relative', flex: 1 }}>
+        <input 
+          ref={inputRef}
+          type={inputType} 
+          value={draft} 
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
+          onFocus={() => {
+            if (isTextType && getPreviousValues.length > 0) {
+              if (draft.trim()) {
+                const filtered = getPreviousValues.filter(v => 
+                  v.toLowerCase().includes(draft.toLowerCase())
+                );
+                setAutocompleteSuggestions(filtered);
+                setShowAutocomplete(filtered.length > 0);
+              } else {
+                setAutocompleteSuggestions(getPreviousValues);
+                setShowAutocomplete(true);
+              }
+            }
+          }}
+        />
+        {showAutocomplete && autocompleteSuggestions.length > 0 && (
+          <div className="autocomplete-dropdown">
+            {autocompleteSuggestions.map((suggestion, idx) => (
+              <div
+                key={idx}
+                className="autocomplete-option"
+                onClick={() => handleSelectSuggestion(suggestion)}
+              >
+                {suggestion}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <button onClick={() => { onSave(draft); setEditing(false); setShowAutocomplete(false); }} title="Save">✓</button>
+      <button onClick={() => { setDraft(value); setEditing(false); setShowAutocomplete(false); }} title="Cancel">×</button>
     </span>
   ) : (
     <span className="inline-view" onDoubleClick={() => setEditing(true)}>

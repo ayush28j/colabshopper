@@ -89,7 +89,7 @@ exports.getCollaboratingLists = async (req, res) => {
 exports.getList = async (req, res) => {
     try{
         let list = req.list;
-        let listItems = await ListItem.find({listId: list._id}).collation({locale: "en", strength: 2}).sort({name: 1}).lean();
+        let listItems = await ListItem.find({listId: list._id}).sort({addedAt: 1}).lean();
         // if(!list.isPublic){
         //     let userIds = listItems.map(item => item.whoBrings.map(who => who.userId)).flat();
         //     let users = await User.find({_id: {$in: userIds}});

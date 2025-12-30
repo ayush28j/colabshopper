@@ -44,6 +44,11 @@ const ListItemSchema = new Schema({
     addedByName: {
         type: String,
     },
+    addedAt: {
+        type: Date,
+        default: Date.now,
+        required: false
+    }
 }, { strict: false});
 
 mongoose.model("ListItem", ListItemSchema);

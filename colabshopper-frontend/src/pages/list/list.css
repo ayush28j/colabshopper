@@ -837,6 +837,28 @@
   justify-content: space-between;
 }
 
+/* Sortable Column */
+.sortable-column {
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sortable-column:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+.sort-indicator {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  display: inline-block;
+}
+
 /* Table Header Content */
 .tf-content {
   display: flex;
@@ -1062,11 +1084,22 @@
   align-items: center;
 }
 
+.inline-edit {
+  position: relative;
+}
+
+.inline-edit > div {
+  position: relative;
+  flex: 1;
+}
+
 .inline-edit input {
   padding: 0.375rem;
   border: 2px solid #667eea;
   border-radius: 4px;
   font-size: 0.9375rem;
+  width: 100%;
+  min-width: 100px;
 }
 
 .inline-edit button {
@@ -1094,6 +1127,329 @@
 
 .inline-edit button:last-of-type:hover {
   background: #f56565;
+}
+
+/* Autocomplete Dropdown */
+@keyframes dropdownSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.autocomplete-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 2px;
+  animation: dropdownSlideIn 0.2s ease;
+}
+
+.autocomplete-option {
+  padding: 0.625rem 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f7fafc;
+  font-size: 0.875rem;
+  color: #2d3748;
+}
+
+.autocomplete-option:last-child {
+  border-bottom: none;
+}
+
+.autocomplete-option:hover {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  color: #667eea;
+}
+
+.autocomplete-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.autocomplete-dropdown::-webkit-scrollbar-track {
+  background: #f7fafc;
+}
+
+.autocomplete-dropdown::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+}
+
+.autocomplete-dropdown::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* Table Controls */
+.table-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.print-btn {
+  padding: 0.625rem 1.25rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  white-space: nowrap;
+}
+
+.print-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* Print Styles */
+@media print {
+  /* Hide everything that shouldn't be printed */
+  .no-print,
+  .actions-pane,
+  .mobile-list-header,
+  .mobile-toggle-pane-btn,
+  .mobile-settings-pane,
+  .search-bar-container,
+  .table-controls,
+  .active-filters-bar,
+  .filter-container,
+  .filter-btn,
+  .filter-dropdown,
+  .sortable-column,
+  .sort-indicator,
+  .inline-view button,
+  .inline-edit,
+  .edit-who-brings-btn,
+  .perms-modal-overlay,
+  .username-modal-overlay,
+  header,
+  footer,
+  .list-page::after {
+    display: none !important;
+  }
+
+  /* Show only the table with data */
+  .list-page {
+    padding: 0;
+    margin: 0;
+    background: white;
+    font-size: 10pt;
+  }
+
+  .list-container {
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+  }
+
+  .table-pane {
+    padding: 0;
+    margin: 0;
+    width: 100%;
+  }
+
+  .table-wrapper {
+    box-shadow: none;
+    border: none;
+    overflow: visible;
+    width: 100%;
+  }
+
+  .list-table {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-collapse: collapse;
+    page-break-inside: auto;
+    font-size: 9pt;
+    table-layout: auto;
+  }
+
+  .list-table thead {
+    background: #667eea !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .list-table thead th {
+    background: #667eea !important;
+    color: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    padding: 0.4rem 0.3rem;
+    border: 1px solid #5568d3;
+    font-size: 8pt;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+
+  .list-table thead th:last-child,
+  .list-table tbody td:last-child {
+    display: none !important;
+  }
+
+  /* Hide unit column header and cells in print */
+  .list-table thead th.unit-header-print,
+  .list-table tbody td.unit-cell-print,
+  .list-table tfoot td.unit-cell-print {
+    display: none !important;
+  }
+
+  /* Show unit value after qty in print */
+  .list-table tbody td.qty-cell-print::after {
+    content: ' ' attr(data-unit);
+    margin-left: 0.2em;
+    font-weight: normal;
+  }
+
+  .list-table tbody td.qty-cell-print[data-unit=""]::after,
+  .list-table tbody td.qty-cell-print[data-unit="undefined"]::after {
+    content: '';
+  }
+
+  /* Update qty header to show "qty" only (unit will be merged) */
+  .list-table thead th.qty-header-print .th-content span:first-child::after {
+    content: '';
+  }
+
+  .list-table tbody tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .list-table tbody td {
+    padding: 0.4rem 0.3rem;
+    border: 1px solid #e2e8f0;
+    font-size: 9pt;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .list-table .new-row {
+    display: none !important;
+  }
+
+  .list-table .completed-cell {
+    text-align: center;
+    width: 30px;
+    padding: 0.3rem 0.2rem !important;
+  }
+
+  .list-table .completed-header {
+    width: 30px;
+    padding: 0.4rem 0.2rem !important;
+  }
+
+  .list-table .completed-checkbox,
+  .list-table .table-checkbox {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    width: 14px;
+    height: 14px;
+    margin: 0;
+  }
+
+  .who-brings-cell {
+    display: block;
+  }
+
+  .who-brings-cell .muted {
+    color: #2d3748;
+    font-style: normal;
+    font-size: 8pt;
+    line-height: 1.3;
+  }
+
+  .inline-view {
+    display: block;
+    font-size: 9pt;
+  }
+
+  .inline-view button,
+  .inline-edit button {
+    display: none !important;
+  }
+
+  .inline-edit {
+    display: block;
+  }
+
+  .inline-edit input,
+  .inline-edit select,
+  .table-select {
+    border: none;
+    background: transparent;
+    padding: 0;
+    pointer-events: none;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    font-size: 9pt;
+  }
+
+  .completed-row {
+    opacity: 0.6;
+  }
+
+  .completed-row td:not(.completed-cell) {
+    text-decoration: line-through;
+  }
+
+  /* Ensure table fits on page */
+  @page {
+    margin: 0.5cm;
+    size: A4 landscape;
+  }
+
+  /* Prevent page breaks in table header */
+  .list-table thead {
+    display: table-header-group;
+  }
+
+  /* Print header with list name */
+  .list-page::before {
+    content: attr(data-list-name);
+    display: block;
+    font-size: 14pt;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 2px solid #667eea;
+    color: #2d3748;
+  }
+
+  /* Ensure all columns are visible */
+  .list-table th,
+  .list-table td {
+    min-width: 0;
+    max-width: none;
+  }
+
+  /* Reduce spacing in table footer */
+  .list-table tfoot td {
+    padding: 0.3rem 0.3rem;
+    font-size: 8pt;
+  }
 }
 
 /* Action Buttons in Table */
