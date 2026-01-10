@@ -2579,3 +2579,16 @@
   transform: scale(1.1);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
+
+.draggable-header {
+  cursor: grab;
+}
+
+.draggable-header:active {
+  cursor: grabbing;
+}
+
+.draggable-header.drag-over {
+  outline: 2px dashed rgba(255, 255, 255, 0.7);
+  outline-offset: -4px;
+}

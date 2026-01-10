@@ -67,6 +67,10 @@ const ListPage: React.FC = () => {
   const [showFilterDropdown, setShowFilterDropdown] = useState<string | null>(null);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  // Column ordering
+  const [columnOrder, setColumnOrder] = useState<string[]>([]);
+  const dragColRef = useRef<string | null>(null);
   
   // Search
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -409,6 +413,19 @@ const ListPage: React.FC = () => {
     };
   }, [listId]);
 
+  useEffect(() => {
+    if (!allColumns.length) return;
+  
+    setColumnOrder(prev => {
+      if (prev.length === 0) return allColumns;
+  
+      // Keep existing order, append new columns at end
+      const existing = prev.filter(c => allColumns.includes(c));
+      const added = allColumns.filter(c => !existing.includes(c));
+      return [...existing, ...added];
+    });
+  }, [allColumns]);
+
   const refresh = async () => {
     if (!listId) return;
     try {
@@ -538,6 +555,33 @@ const ListPage: React.FC = () => {
   const clearAllFilters = () => {
     setColumnFilters({});
   };
+
+  // Column ordering
+  const onDragStart = (col: string) => {
+    dragColRef.current = col;
+  };
+  
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+  
+  const onDrop = (targetCol: string) => {
+    const sourceCol = dragColRef.current;
+    if (!sourceCol || sourceCol === targetCol) return;
+  
+    setColumnOrder(prev => {
+      const next = [...prev];
+      const from = next.indexOf(sourceCol);
+      const to = next.indexOf(targetCol);
+  
+      next.splice(from, 1);
+      next.splice(to, 0, sourceCol);
+      return next;
+    });
+  
+    dragColRef.current = null;
+  };
+  
   
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -1323,11 +1367,18 @@ const ListPage: React.FC = () => {
                   <th className="completed-header">
                     <span>✓</span>
                   </th>
-                  {allColumns.map(col => (
-                    <th 
-                      key={col}
-                      className={col === 'unit' ? 'unit-header-print' : col === 'qty' ? 'qty-header-print' : ''}
-                    >
+                  {columnOrder.map(col => (
+                      <th
+                        key={col}
+                        draggable
+                        onDragStart={() => onDragStart(col)}
+                        onDragOver={onDragOver}
+                        onDrop={() => onDrop(col)}
+                        className={`draggable-header ${
+                          col === 'unit' ? 'unit-header-print' :
+                          col === 'qty' ? 'qty-header-print' : ''
+                        }`}
+                      >
                       <div className="th-content">
                         <span 
                           className={isSortableColumn(col) ? 'sortable-column' : ''}
@@ -1391,7 +1442,7 @@ const ListPage: React.FC = () => {
               <tbody>
                 <tr className="new-row">
                   <td className="completed-cell"></td>
-                  {allColumns.map(col => {
+                  {columnOrder.map(col => {
                     const colType = getColumnType(col);
                     return (
                       <td key={col}>
@@ -1440,7 +1491,7 @@ const ListPage: React.FC = () => {
                         title="Mark as completed"
                       />
                     </td>
-                    {allColumns.map(col => {
+                    {columnOrder.map(col => {
                       const colType = getColumnType(col);
                       return (
                         <td 
@@ -1469,8 +1520,6 @@ const ListPage: React.FC = () => {
                               checked={(item as any)[col] === true || (item as any)[col] === 'true'}
                               onChange={(e) => onUpdateCell(item, col, e.target.checked)}
                               className="table-checkbox"
-                              disabled
-                              readOnly
                             />
                           ) : colType === 'person' ? (
                             <PersonEditable
@@ -1507,7 +1556,7 @@ const ListPage: React.FC = () => {
                 <tr>
                   <td className="completed-header">
                   </td>
-                  {allColumns.map(col => (
+                  {columnOrder.map(col => (
                     <td 
                       key={col}
                       className={col === 'unit' ? 'unit-cell-print' : ''}
