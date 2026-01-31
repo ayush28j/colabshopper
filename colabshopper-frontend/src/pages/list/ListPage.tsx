@@ -72,6 +72,11 @@ const ListPage: React.FC = () => {
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
   const dragColRef = useRef<string | null>(null);
   
+  // Print column selection
+  const [showPrintColumnModal, setShowPrintColumnModal] = useState(false);
+  const [selectedPrintColumns, setSelectedPrintColumns] = useState<Set<string>>(new Set());
+  const [printStyle, setPrintStyle] = useState<'normal' | 'small' | 'compact' | 'large' | 'xl'>('normal');
+  
   // Search
   const [searchQuery, setSearchQuery] = useState<string>('');
   
@@ -425,6 +430,13 @@ const ListPage: React.FC = () => {
       return [...existing, ...added];
     });
   }, [allColumns]);
+
+  // Initialize selected print columns to all columns
+  useEffect(() => {
+    if (allColumns.length > 0 && selectedPrintColumns.size === 0) {
+      setSelectedPrintColumns(new Set(allColumns));
+    }
+  }, [allColumns, selectedPrintColumns.size]);
 
   const refresh = async () => {
     if (!listId) return;
@@ -949,7 +961,7 @@ const ListPage: React.FC = () => {
   const userLoggedIn = isLoggedIn();
 
   return (
-    <div className="list-page" data-list-name={list?.name || 'Shopping List'}>
+    <div className="list-page" data-list-name={list?.name || 'Shopping List'} data-print-style={printStyle}>
       {showUsernameModal && (
         <div className="username-modal-overlay">
           <div className="username-modal">
@@ -1343,7 +1355,7 @@ const ListPage: React.FC = () => {
             </div>
             <button 
               className="print-btn"
-              onClick={() => window.print()}
+              onClick={() => setShowPrintColumnModal(true)}
               title="Print list"
             >
               🖨️ Print
@@ -1367,17 +1379,20 @@ const ListPage: React.FC = () => {
                   <th className="completed-header">
                     <span>✓</span>
                   </th>
-                  {columnOrder.map(col => (
+                  {columnOrder.map(col => {
+                    const isSelectedForPrint = selectedPrintColumns.has(col);
+                    return (
                       <th
                         key={col}
                         draggable
                         onDragStart={() => onDragStart(col)}
                         onDragOver={onDragOver}
                         onDrop={() => onDrop(col)}
-                        className={`draggable-header ${
+                        className={`draggable-header print-column-${col} ${
                           col === 'unit' ? 'unit-header-print' :
                           col === 'qty' ? 'qty-header-print' : ''
-                        }`}
+                        } ${isSelectedForPrint ? 'print-selected' : 'print-not-selected'}`}
+                        data-column-name={col}
                       >
                       <div className="th-content">
                         <span 
@@ -1435,7 +1450,8 @@ const ListPage: React.FC = () => {
                         )}
                       </div>
                     </th>
-                  ))}
+                    );
+                  })}
                   <th>actions</th>
                 </tr>
               </thead>
@@ -1493,11 +1509,13 @@ const ListPage: React.FC = () => {
                     </td>
                     {columnOrder.map(col => {
                       const colType = getColumnType(col);
+                      const isSelectedForPrint = selectedPrintColumns.has(col);
                       return (
                         <td 
                           key={col}
                           data-unit={col === 'qty' ? (item.unit || '') : undefined}
-                          className={col === 'qty' ? 'qty-cell-print' : col === 'unit' ? 'unit-cell-print' : ''}
+                          className={`print-column-${col} ${col === 'qty' ? 'qty-cell-print' : col === 'unit' ? 'unit-cell-print' : ''} ${isSelectedForPrint ? 'print-selected' : 'print-not-selected'}`}
+                          data-column-name={col}
                         >
                           {colType === 'whoBrings' ? (
                             <div className="who-brings-cell">
@@ -1556,23 +1574,27 @@ const ListPage: React.FC = () => {
                 <tr>
                   <td className="completed-header">
                   </td>
-                  {columnOrder.map(col => (
-                    <td 
-                      key={col}
-                      className={col === 'unit' ? 'unit-cell-print' : ''}
-                    >
-                      <div className="tf-content">
-                        {col === 'name' && (
-                          <span>Total: </span>
-                        )}
-                        {isPriceColumn(col) && (
-                          <span>
-                            {formatPrice(getTotalPriceForColumn(col))}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                  ))}
+                  {columnOrder.map(col => {
+                    const isSelectedForPrint = selectedPrintColumns.has(col);
+                    return (
+                      <td 
+                        key={col}
+                        className={`print-column-${col} ${col === 'unit' ? 'unit-cell-print' : ''} ${isSelectedForPrint ? 'print-selected' : 'print-not-selected'}`}
+                        data-column-name={col}
+                      >
+                        <div className="tf-content">
+                          {col === 'name' && (
+                            <span>Total: </span>
+                          )}
+                          {isPriceColumn(col) && (
+                            <span>
+                              {formatPrice(getTotalPriceForColumn(col))}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })}
                 </tr>
               </tfoot>
             </table>
@@ -1842,6 +1864,103 @@ const ListPage: React.FC = () => {
               </button>
               <button onClick={onCancelDeleteItem} className="secondary-btn">
                 No, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print Column Selection Modal */}
+      {showPrintColumnModal && (
+        <div className="perms-modal-overlay" onClick={() => setShowPrintColumnModal(false)}>
+          <div className="perms-modal print-column-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>🖨️ Select Columns to Print</h2>
+            <p className="modal-subtitle">
+              Click on columns to select or deselect them for printing. The "name" column is always included.
+            </p>
+            <div className="print-columns-grid">
+              {columnOrder.map(col => {
+                const isSelected = selectedPrintColumns.has(col);
+                const isNameColumn = col === 'name';
+                return (
+                  <div
+                    key={col}
+                    className={`print-column-option ${isSelected ? 'selected' : ''} ${isNameColumn ? 'required' : ''}`}
+                    onClick={() => {
+                      if (isNameColumn) return; // Name column cannot be deselected
+                      setSelectedPrintColumns(prev => {
+                        const next = new Set(prev);
+                        if (isSelected) {
+                          next.delete(col);
+                        } else {
+                          next.add(col);
+                        }
+                        return next;
+                      });
+                    }}
+                    title={isNameColumn ? 'Name column is always included' : isSelected ? 'Click to deselect' : 'Click to select'}
+                  >
+                    {col}
+                    {isNameColumn && <span className="required-badge">Required</span>}
+                  </div>
+                );
+              })}
+            </div>
+            
+            <div className="print-style-section">
+              <h3 style={{ margin: '1.5rem 0 0.75rem 0', fontSize: '1rem', fontWeight: 600, color: '#4a5568' }}>
+                Print Style
+              </h3>
+              <div className="print-styles-grid">
+                {[
+                  { value: 'normal', label: 'Normal', desc: 'Default style' },
+                  { value: 'small', label: 'Small', desc: '25% smaller' },
+                  { value: 'compact', label: 'Compact', desc: '50% smaller' },
+                  { value: 'large', label: 'Large', desc: '20% more spacious' },
+                  { value: 'xl', label: 'XL', desc: 'Landscape mode' }
+                ].map(style => (
+                  <div
+                    key={style.value}
+                    className={`print-style-option ${printStyle === style.value ? 'selected' : ''}`}
+                    onClick={() => setPrintStyle(style.value as 'normal' | 'small' | 'compact' | 'large' | 'xl')}
+                    title={style.desc}
+                  >
+                    <div className="print-style-label">{style.label}</div>
+                    <div className="print-style-desc">{style.desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="modal-actions">
+              <button 
+                onClick={() => {
+                  setShowPrintColumnModal(false);
+                  // Inject landscape @page rule for XL style
+                  if (printStyle === 'xl') {
+                    const style = document.createElement('style');
+                    style.id = 'print-landscape-style';
+                    style.textContent = '@page { size: 297mm 210mm !important; }';
+                    document.head.appendChild(style);
+                    window.print();
+                    // Remove the style after printing
+                    setTimeout(() => {
+                      const styleEl = document.getElementById('print-landscape-style');
+                      if (styleEl) styleEl.remove();
+                    }, 1000);
+                  } else {
+                    window.print();
+                  }
+                }}
+                className="primary-btn"
+              >
+                Print
+              </button>
+              <button 
+                onClick={() => setShowPrintColumnModal(false)} 
+                className="secondary-btn"
+              >
+                Cancel
               </button>
             </div>
           </div>
